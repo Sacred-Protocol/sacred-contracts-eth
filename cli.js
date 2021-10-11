@@ -569,6 +569,18 @@ async function main() {
         await withdraw({ deposit, currency, amount, recipient, refund, relayerURL: program.relayer })
       })
     program
+      .command('sacredtest <currency> <amount> <recipient>')
+      .description('Perform an automated test. It deposits and withdraws one ETH. Uses Kovan Testnet.')
+      .action(async (currency, amount, recipient) => {
+        currency = currency.toLowerCase()
+        await init({ rpc: program.rpc, nodeNetId: 42, currency, amount })
+        let noteString = await deposit({ currency, amount })
+        const { deposit: depositNote } = parseNote(noteString)
+        const refund = '0'
+        await withdraw({ deposit: depositNote, currency, amount, recipient, refund, relayerURL: program.relayer })
+
+      })
+    program
       .command('balance <address> [token_address]')
       .description('Check ETH and ERC20 balance')
       .action(async (address, tokenAddress) => {

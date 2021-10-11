@@ -55,7 +55,7 @@ contract ETHSacred is Sacred {
     require(_refund == 0, "Refund value is supposed to be zero for ETH instance");
 
     address lendingPool = AddressesProvider(lendingPoolAddressProvider).getLendingPool();
-    AToken(wETHToken).approve(wETHGateway, denomination);
+    require(AToken(wETHToken).approve(wETHGateway, denomination), "aToken approval failed");
     WETHGateway(wETHGateway).withdrawETH(lendingPool, denomination - _fee, _recipient);
 
     if (_fee > 0) {
