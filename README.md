@@ -2,7 +2,7 @@
 
 ## Introduction
 
-This is a variant of Tornado cash compatible with the Aave protocol. The source code is orginiated from [tornado-anonymity-mining](https://github.com/tornadocash/tornado-anonymity-mining), [tornado-core](https://github.com/tornadocash/tornado-core).
+This is a variant of Tornado cash compatible with the [Aave protocol](https://aave.com/). The source code is orginiated from [tornado-core](https://github.com/tornadocash/tornado-core).
 
 ## Installation
 
@@ -13,34 +13,26 @@ This is a variant of Tornado cash compatible with the Aave protocol. The source 
 3. zkutil (`brew install rust && cargo install zkutil`)
 
 ### Build
-
+Install dependencies then build:
 ```bash
 $ yarn
-$ cp .env.example .env
 $ yarn build
 ```
 
+### Deploy
+```bash
+$ cp .env.example .env
+Add all necessary parameters in .env
+$ yarn migrate:kovan
+```
+To deploy other pool sizes, change the ETH_AMOUNT parameter.
+
 ### Test
 
-Current test code is incompetible with Conflux's RPC. So you can only test it via the Ethereum tool-chains.
-
-1. Run a personal ethereum.
-
+Update contract addresses in `config.js`
 ```bash
-$ npx ganache-cli
+$ ./cli.js sacredtest eth 0.1 <RECIPIENT ADDR> --rpc <RPC URL>
 ```
-
-2. Run test.
-
-```bash
-$ yarn test
-```
-
-### Deployment on Testnet
-
-1. Use [Conflux Portal](https://portal.conflux-chain.org/) to claim the CFX tokens on testnet.
-2. Put your private key in `truffle.js` and `.env`
-3. Run `yarn deploy:cfxtest`
 
 ## Contract guidance
 
