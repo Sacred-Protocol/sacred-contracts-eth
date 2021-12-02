@@ -28,7 +28,7 @@ module.exports = {
     netId42: {
       eth: {
         instanceAddress: {
-          '0.01' : '0x449EfDAdB9Dd5143a429A661c9161b01eDdaD81b',
+          '0.01': '0x449EfDAdB9Dd5143a429A661c9161b01eDdaD81b',
           '0.1': '0x18728Ed74D131598392eD76d9DadF2210E377a18',
           '1': undefined,
           '10': undefined,
@@ -37,16 +37,13 @@ module.exports = {
         symbol: 'ETH',
         decimals: 18
       },
-      dai: {
+      ceth: {
         instanceAddress: {
-          '100': undefined,
-          '1000': undefined,
-          '10000': undefined,
-          '100000': undefined
+          '1': '0x6504342B28d20853f87BC3E2e63012c30AB8080C',
         },
-        tokenAddress: '0x4F96Fe3b7A6Cf9725f59d353F723c1bDb64CA6Aa',
-        symbol: 'DAI',
-        decimals: 18
+        tokenAddress: '0x41b5844f4680a8c38fbb695b7f9cfd1f64474a72',
+        symbol: 'cETH',
+        decimals: 8
       },
     }
   }
