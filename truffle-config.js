@@ -43,10 +43,10 @@ module.exports = {
     // Useful for deploying to a public network.
     // NB: It's important to wrap the provider as a function.
     kovan: {
-      provider: () => new HDWalletProvider(process.env.PRIVATE_KEY, process.env.INFURA_KOVAN ),
+      provider: () => new HDWalletProvider(process.env.PRIVATE_KEY, process.env.INFURA_KOVAN),
       network_id: 42,
       gas: 6000000,
-      gasPrice: utils.toWei('1', 'gwei'),
+      gasPrice: utils.toWei('3', 'gwei'),
       // confirmations: 0,
       // timeoutBlocks: 200,
       skipDryRun: true

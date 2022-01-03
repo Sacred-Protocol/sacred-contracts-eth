@@ -3,7 +3,7 @@ pragma solidity 0.5.17;
 import "./Sacred.sol";
 
 interface AddressesProvider {
-    function getLendingPool()
+    function getPool()
     external
     view
     returns (address);
@@ -45,7 +45,7 @@ contract ETHSacred is Sacred {
 
   function _processDeposit() internal {
     require(msg.value == denomination, "Please send `mixDenomination` ETH along with transaction");
-    address lendingPool = AddressesProvider(lendingPoolAddressProvider).getLendingPool();
+    address lendingPool = AddressesProvider(lendingPoolAddressProvider).getPool();
     WETHGateway(wETHGateway).depositETH.value(denomination)(lendingPool, address(this), 0);
   }
 
@@ -54,7 +54,7 @@ contract ETHSacred is Sacred {
     require(msg.value == 0, "Message value is supposed to be zero for ETH instance");
     require(_refund == 0, "Refund value is supposed to be zero for ETH instance");
 
-    address lendingPool = AddressesProvider(lendingPoolAddressProvider).getLendingPool();
+    address lendingPool = AddressesProvider(lendingPoolAddressProvider).getPool();
     require(AToken(wETHToken).approve(wETHGateway, denomination), "aToken approval failed");
     WETHGateway(wETHGateway).withdrawETH(lendingPool, denomination - _fee, _recipient);
 
