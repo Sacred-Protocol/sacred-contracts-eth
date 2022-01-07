@@ -52,6 +52,7 @@ contract Sacred is MerkleTreeWithHistory, ReentrancyGuard {
     @param _fee fee amount that is sent to operator when user withdraw
   */
   function setFee(uint256 _fee) external onlyOperator {
+    require(_fee <= 1000, "Operator fee has to be smaller than 10%");
     fee = _fee;
   }
 
