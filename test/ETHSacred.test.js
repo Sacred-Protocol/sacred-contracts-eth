@@ -506,29 +506,6 @@ contract('ETHSacred', accounts => {
     })
   })
 
-  describe('#updateVerifier', () => {
-    it('should work', async () => {
-      let operator = await sacred.operator()
-      operator.should.be.equal(sender)
-
-      const newVerifier = accounts[7]
-      await sacred.updateVerifier(newVerifier).should.be.fulfilled
-
-      const verifier = await sacred.verifier()
-      verifier.should.be.equal(newVerifier)
-    })
-
-    it('cannot change from different address', async () => {
-      let operator = await sacred.operator()
-      operator.should.be.equal(sender)
-
-      const newVerifier = accounts[7]
-      const error = await sacred.updateVerifier(newVerifier, { from:  accounts[7] }).should.be.rejected
-      error.reason.should.be.equal('Only operator can call this function.')
-
-    })
-  })
-
   describe('#isSpent', () => {
     it('should work', async () => {
       const deposit1 = generateDeposit()
