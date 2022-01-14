@@ -110,14 +110,6 @@ contract Sacred is MerkleTreeWithHistory, ReentrancyGuard {
     }
   }
 
-  /**
-    @dev allow operator to update SNARK verification keys. This is needed to update keys after the final trusted setup ceremony is held.
-    After that operator rights are supposed to be transferred to zero address
-  */
-  function updateVerifier(address _newVerifier) external onlyOperator {
-    verifier = IVerifier(_newVerifier);
-  }
-
   /** @dev operator can change his address */
   function changeOperator(address _newOperator) external onlyOperator {
     operator = _newOperator;
