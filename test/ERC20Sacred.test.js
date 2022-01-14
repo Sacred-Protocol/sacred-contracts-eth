@@ -175,11 +175,13 @@ contract('ERC20Sacred', accounts => {
       const ethBalanceRecieverAfter = await web3.eth.getBalance(toFixedHex(recipient, 20))
       const ethBalanceRelayerAfter = await web3.eth.getBalance(relayer)
       const feeBN = toBN(fee.toString())
+      let operatorFee = await sacred.fee()
+      const operatorFeeAmount = toBN(value).mul(operatorFee).div(10000)
       balanceSacredAfter.should.be.eq.BN(toBN(balanceSacredBefore).sub(toBN(tokenDenomination)))
       balanceRelayerAfter.should.be.eq.BN(toBN(balanceRelayerBefore).add(feeBN))
-      balanceRecieverAfter.should.be.eq.BN(toBN(balanceRecieverBefore).add(toBN(tokenDenomination).sub(feeBN)))
+      balanceRecieverAfter.should.be.eq.BN(toBN(balanceRecieverBefore).add(toBN(tokenDenomination).sub(feeBN).sub(operatorFeeAmount)))
 
-      ethBalanceOperatorAfter.should.be.eq.BN(toBN(ethBalanceOperatorBefore))
+      ethBalanceOperatorAfter.should.be.eq.BN(toBN(ethBalanceOperatorBefore).add(operatorFeeAmount))
       ethBalanceRecieverAfter.should.be.eq.BN(toBN(ethBalanceRecieverBefore).add(toBN(refund)))
       ethBalanceRelayerAfter.should.be.eq.BN(toBN(ethBalanceRelayerBefore).sub(toBN(refund)))
 

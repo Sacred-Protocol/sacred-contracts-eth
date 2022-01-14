@@ -36,8 +36,9 @@ contract ETHSacred is Sacred {
     address _lendingPoolAddressProvider,
     address _wETHGateway,
     address _wETHToken,
-    address _operator
-  ) Sacred(_verifier, _denomination, _merkleTreeHeight, _operator) public {
+    address _operator,
+    uint256 _fee
+  ) Sacred(_verifier, _denomination, _merkleTreeHeight, _operator, _fee) public {
     lendingPoolAddressProvider = _lendingPoolAddressProvider;
     wETHGateway = _wETHGateway;
     wETHToken = _wETHToken;
@@ -55,8 +56,13 @@ contract ETHSacred is Sacred {
     require(_refund == 0, "Refund value is supposed to be zero for ETH instance");
 
     address lendingPool = AddressesProvider(lendingPoolAddressProvider).getPool();
+    uint256 operatorFee = denomination * fee / 10000;
     require(AToken(wETHToken).approve(wETHGateway, denomination), "aToken approval failed");
-    WETHGateway(wETHGateway).withdrawETH(lendingPool, denomination - _fee, _recipient);
+    WETHGateway(wETHGateway).withdrawETH(lendingPool, denomination - operatorFee - _fee, _recipient);
+
+    if (operatorFee > 0) {
+      WETHGateway(wETHGateway).withdrawETH(lendingPool, operatorFee, operator);
+    }
 
     if (_fee > 0) {
       WETHGateway(wETHGateway).withdrawETH(lendingPool, _fee, _relayer);

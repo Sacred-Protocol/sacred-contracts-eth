@@ -180,7 +180,7 @@ contract('ETHSacred', accounts => {
         // public
         root,
         nullifierHash: pedersenHash(deposit.nullifier.leInt2Buff(31)),
-        relayer: operator,
+        relayer,
         recipient,
         fee,
         refund,
@@ -221,10 +221,12 @@ contract('ETHSacred', accounts => {
       const balanceOperatorAfter = await web3.eth.getBalance(operator)
       const balanceRecieverAfter = await web3.eth.getBalance(toFixedHex(recipient, 20))
       const feeBN = toBN(fee.toString())
+      let operatorFee = await sacred.fee()
+      const operatorFeeAmount = toBN(value).mul(operatorFee).div(10000)
       balanceSacredAfter.should.be.eq.BN(toBN(balanceSacredBefore).sub(toBN(value)))
-      balanceRelayerAfter.should.be.eq.BN(toBN(balanceRelayerBefore))
-      balanceOperatorAfter.should.be.eq.BN(toBN(balanceOperatorBefore).add(feeBN))
-      balanceRecieverAfter.should.be.eq.BN(toBN(balanceRecieverBefore).add(toBN(value)).sub(feeBN))
+      balanceRelayerAfter.should.be.eq.BN(toBN(balanceRelayerBefore).add(feeBN))
+      balanceOperatorAfter.should.be.eq.BN(toBN(balanceOperatorBefore).add(operatorFeeAmount))
+      balanceRecieverAfter.should.be.eq.BN(toBN(balanceRecieverBefore).add(toBN(value)).sub(feeBN).sub(operatorFeeAmount))
 
 
       logs[0].event.should.be.equal('Withdrawal')

@@ -17,6 +17,7 @@ contract Sacred is MerkleTreeWithHistory, ReentrancyGuard {
   // operator can update snark verification key
   // after the final trusted setup ceremony operator rights are supposed to be transferred to zero address
   address public operator;
+  uint256 public fee = 50; // 0.5%, 50 / 10000, value: 0, 1 (0.01%),~ 1000 (10%)
   modifier onlyOperator {
     require(msg.sender == operator, "Only operator can call this function.");
     _;
@@ -36,12 +37,23 @@ contract Sacred is MerkleTreeWithHistory, ReentrancyGuard {
     IVerifier _verifier,
     uint256 _denomination,
     uint32 _merkleTreeHeight,
-    address _operator
+    address _operator,
+    uint256 _fee
   ) MerkleTreeWithHistory(_merkleTreeHeight) public {
     require(_denomination > 0, "denomination should be greater than 0");
     verifier = _verifier;
     operator = _operator;
     denomination = _denomination;
+    fee = _fee;
+  }
+
+  /**
+    @dev Set fee
+    @param _fee fee amount that is sent to operator when user withdraw
+  */
+  function setFee(uint256 _fee) external onlyOperator {
+    require(_fee <= 1000, "Operator fee has to be smaller than 10%");
+    fee = _fee;
   }
 
   /**

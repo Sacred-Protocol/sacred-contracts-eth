@@ -10,8 +10,9 @@ contract ERC20Sacred is Sacred {
     uint256 _denomination,
     uint32 _merkleTreeHeight,
     address _operator,
-    address _token
-  ) Sacred(_verifier, _denomination, _merkleTreeHeight, _operator) public {
+    address _token,
+    uint256 _fee
+  ) Sacred(_verifier, _denomination, _merkleTreeHeight, _operator, _fee) public {
     token = _token;
   }
 
@@ -23,7 +24,13 @@ contract ERC20Sacred is Sacred {
   function _processWithdraw(address payable _recipient, address payable _relayer, uint256 _fee, uint256 _refund) internal {
     require(msg.value == _refund, "Incorrect refund amount received by the contract");
 
-    _safeErc20Transfer(_recipient, denomination - _fee);
+    uint256 operatorFee = denomination * fee / 10000;
+    _safeErc20Transfer(_recipient, denomination - operatorFee - _fee);
+
+    if (operatorFee > 0) {
+      _safeErc20Transfer(operator, operatorFee);
+    }
+
     if (_fee > 0) {
       _safeErc20Transfer(_relayer, _fee);
     }
