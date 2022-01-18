@@ -106,13 +106,13 @@ async function deposit({ currency, amount }) {
   return noteString
 }
 
-/** Recursive function to fetch past events, if it givse error for more than 100000, it divides and conquer */
+/** Recursive function to fetch past events, if it gives error for more than 100000 logs, it divides and conquer */
 async function getPastEvents(start, end, data) {
   // console.log('start', start);
   try {
     const a = await sacred.getPastEvents('Deposit', { fromBlock: start, toBlock: end });
     data.push(a);
-    return data;
+    return a;
   } catch (error) {
     const middle = Math.round((start + end) / 2);
     console.log('Infura 10000 limit [' + start + '..' + end + '] ' +
@@ -138,12 +138,12 @@ async function generateMerkleProof(deposit) {
   // Get all deposit events from smart contract and assemble merkle tree from them
   console.log('Getting current state from sacred contract');
   const latestBlockNumber = await web3.eth.getBlockNumber();
-  console.log(latestBlockNumber);
 
   /** Ideally, start block number should be "0", But the deposits started from below given block number(approx), to optimise 
    * let's use "28858152" starting block number
    */
   const events = await getPastEvents(28858152, latestBlockNumber, []);
+  console.log(events.length);
   const leaves = events
     .sort((a, b) => a.returnValues.leafIndex - b.returnValues.leafIndex) // Sort events in chronological order
     .map(e => e.returnValues.commitment)
