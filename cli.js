@@ -379,7 +379,7 @@ function calculateFee({ gasPrices, currency, amount, refund, ethPrices, relayerS
   const roundDecimal = 10 ** decimalsPoint
   const total = toBN(fromDecimals({ amount, decimals }))
   const feePercent = total.mul(toBN(relayerServiceFee * roundDecimal)).div(toBN(roundDecimal * 100))
-  const expense = toBN(toWei(gasPrices.fast.toString(), 'gwei')).mul(toBN(0xB71B0))
+  const expense = toBN(toWei(gasPrices.fast.toString(), 'gwei')).mul(toBN(0xF4240))
   let desiredFee
   switch (currency) {
   case 'eth': {
