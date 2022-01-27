@@ -21,6 +21,7 @@ interface WETHGateway {
 interface AToken {
   function balanceOf(address _user) external view returns (uint256);
   function approve(address spender, uint256 amount) external returns (bool);
+  function transfer(address receiver, uint256 amount) external returns (bool);
 }
 
 contract ETHSacred is Sacred {
@@ -28,8 +29,17 @@ contract ETHSacred is Sacred {
   address public lendingPoolAddressProvider;
   address public wETHGateway;
   address public wETHToken;
+  uint256 private collateralAmount;
+  uint256 public totalAaveInterests;
+  address public aaveInterestsProxy;
+  address private owner;
 
-  constructor(
+  modifier onlyOwner() {
+    require(msg.sender == owner, "Not authorized");
+    _;
+  }
+
+  constructor (
     IVerifier _verifier,
     uint256 _denomination,
     uint32 _merkleTreeHeight,
@@ -42,12 +52,15 @@ contract ETHSacred is Sacred {
     lendingPoolAddressProvider = _lendingPoolAddressProvider;
     wETHGateway = _wETHGateway;
     wETHToken = _wETHToken;
+    owner = msg.sender;
   }
 
   function _processDeposit() internal {
     require(msg.value == denomination, "Please send `mixDenomination` ETH along with transaction");
     address lendingPool = AddressesProvider(lendingPoolAddressProvider).getPool();
     WETHGateway(wETHGateway).depositETH.value(denomination)(lendingPool, address(this), 0);
+    collateralAmount += denomination;
+    collectAaveInterests();
   }
 
   function _processWithdraw(address payable _recipient, address payable _relayer, uint256 _fee, uint256 _refund) internal {
@@ -66,6 +79,21 @@ contract ETHSacred is Sacred {
 
     if (_fee > 0) {
       WETHGateway(wETHGateway).withdrawETH(lendingPool, _fee, _relayer);
+    }
+    collateralAmount -= denomination;
+    collectAaveInterests();
+  }
+
+  function setAaveInterestsProxy(address _aaveInterestsProxy) external onlyOwner {
+    aaveInterestsProxy = _aaveInterestsProxy;
+  }
+
+  function collectAaveInterests() public {
+    uint256 interests = AToken(wETHToken).balanceOf(address(this)) - collateralAmount;
+    if(interests > 0 && aaveInterestsProxy != address(0)) {
+      AToken(wETHToken).approve(aaveInterestsProxy, interests);
+      AToken(wETHToken).transfer(aaveInterestsProxy, interests);
+      totalAaveInterests += interests;
     }
   }
 }
