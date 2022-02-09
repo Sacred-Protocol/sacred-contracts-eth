@@ -106,11 +106,33 @@ async function deposit({ currency, amount }) {
   return noteString
 }
 
+function convertToTitleCase(str) {
+  return str.replace(
+    /\w\S*/g,
+    (txt) => {
+      return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
+    });
+}
+
+function initJson(file) {
+  return new Promise((resolve, reject) => {
+      fs.readFile(file, 'utf8', (error, data) => {
+          if (error) {
+              reject(error);
+          }
+          try {
+            resolve(JSON.parse(data));
+          } catch (error) {
+            resolve([]);
+          }
+      });
+  });
+};
+
 /** Recursive function to fetch past events, if it gives error for more than 100000 logs, it divides and conquer */
-async function getPastEvents(start, end, data) {
-  // console.log('start', start);
+async function getPastEvents(type, start, end, data) {
   try {
-    const a = await sacred.getPastEvents('Deposit', { fromBlock: start, toBlock: end });
+    const a = await sacred.getPastEvents(type, { fromBlock: start, toBlock: end });
     data.push(a);
     return a;
   } catch (error) {
@@ -118,8 +140,8 @@ async function getPastEvents(start, end, data) {
     console.log('Infura 10000 limit [' + start + '..' + end + '] ' +
                     '->  [' + start + '..' + middle + '] ' + 
                     'and [' + (middle + 1) + '..' + end + ']');
-    await getPastEvents(start, middle, data);
-    await getPastEvents(middle, end, data);
+    await getPastEvents(type, start, middle, data);
+    await getPastEvents(type, middle, end, data);
     let final = [];
     data?.forEach((d) => {
       final = final.concat(d);
@@ -128,13 +150,127 @@ async function getPastEvents(start, end, data) {
   }
 }
 
+function loadCachedEvents({ type, netId, currency, amount }) {
+  console.log(`/netId_${netId}_${type}_${currency}_${amount}.json`);
+  const fileName = `./cache/netId_${netId}_${type.toLowerCase()}_${currency}_${amount}.json`;
+  var module;
+  try {
+    module = require(fileName);
+  } catch(e) {
+    console.log(e);
+    fs.writeFileSync(fileName, JSON.stringify([], null, 2), 'utf8');
+    module = [];
+  }
+
+  if (module) {
+    const events = module
+    return {
+      events,
+      lastBlock: events.length > 1 ? events[events.length - 1].blockNumber : 0
+    }
+  }
+
+}
+
+async function fetchEvents({ type, netId, currency, amount}) {
+
+  console.log(type, netId, currency, amount)
+
+  const cachedEvents = loadCachedEvents({ type, netId, currency, amount })
+  const startBlock = cachedEvents.lastBlock + 1
+
+  console.log("Loaded cached",amount,currency.toUpperCase(),type,"events for",startBlock,"block")
+  console.log("Fetching",amount,currency.toUpperCase(),type,"events for",'netName',"network")
+
+  async function syncEvents() {
+    try {
+      let targetBlock = await web3.eth.getBlockNumber();
+      let chunks = 1000;
+      let fetchedEvents = [];
+      async function fetchLatestEvents() {
+        // await sacred.getPastEvents(type, {
+        //     fromBlock: i,
+        //     toBlock: i+chunks-1,
+        // }).then(r => { fetchedEvents = fetchedEvents.concat(r); console.log("Fetched",amount,currency.toUpperCase(),type,"events to block:", i+chunks-1) }, err => { console.error(i + " failed fetching",type,"events from node", err); process.exit(1); }).catch(console.log);
+        type = convertToTitleCase(type);
+        fetchedEvents = await getPastEvents(type, startBlock, targetBlock, [])
+      }
+
+      async function mapDepositEvents() {
+        fetchedEvents = fetchedEvents.map(({ blockNumber, transactionHash, returnValues }) => {
+          const { commitment, leafIndex, timestamp } = returnValues
+          return {
+            blockNumber,
+            transactionHash,
+            commitment,
+            leafIndex: Number(leafIndex),
+            timestamp
+          }
+        });
+      }
+
+      async function mapWithdrawEvents() {
+        fetchedEvents = fetchedEvents.map(({ blockNumber, transactionHash, returnValues }) => {
+          const { nullifierHash, to, fee } = returnValues
+          return {
+            blockNumber,
+            transactionHash,
+            nullifierHash,
+            to,
+            fee
+          }
+        })
+      }
+
+      async function mapLatestEvents() {
+        if (type.toLowerCase() === "deposit"){
+          await mapDepositEvents();
+        } else {
+          await mapWithdrawEvents();
+        }
+      }
+
+      async function updateCache() {
+        try {
+          const fileName = `./cache/netId_${netId}_${type.toLowerCase()}_${currency}_${amount}.json`
+          const localEvents = await initJson(fileName);
+          const events = localEvents.concat(fetchedEvents);
+          await fs.writeFileSync(fileName, JSON.stringify(events, null, 2), 'utf8')
+        } catch (error) {
+          throw new Error('Writing cache file failed:',error)
+        }
+      }
+      await fetchLatestEvents();
+      await mapLatestEvents();
+      await updateCache();
+    } catch (error) {
+      console.log(error);
+      throw new Error("Error while updating cache")
+      process.exit(1)
+    }
+  }
+  await syncEvents();
+
+  async function loadUpdatedEvents() {
+    const fileName = `./cache/netId_${netId}_${type.toLowerCase()}_${currency}_${amount}.json`
+    const updatedEvents = await initJson(fileName);
+    const updatedBlock = updatedEvents[updatedEvents.length - 1].blockNumber
+    console.log("Cache updated",type,amount,currency,"instance to block",updatedBlock,"successfully")
+    console.log('Total events:', updatedEvents.length)
+    return updatedEvents;
+  }
+  const events = await loadUpdatedEvents();
+
+  return events
+}
+
 /**
  * Generate merkle tree for a deposit.
  * Download deposit events from the sacred, reconstructs merkle tree, finds our deposit leaf
  * in it and generates merkle proof
  * @param deposit Deposit object
  */
-async function generateMerkleProof(deposit) {
+async function generateMerkleProof({deposit, netId, currency, amount}) {
   // Get all deposit events from smart contract and assemble merkle tree from them
   console.log('Getting current state from sacred contract');
   const latestBlockNumber = await web3.eth.getBlockNumber();
@@ -142,16 +278,19 @@ async function generateMerkleProof(deposit) {
   /** Ideally, start block number should be "0", But the deposits started from below given block number(approx), to optimise 
    * let's use "28858152" starting block number
    */
-  const events = await getPastEvents(28858152, latestBlockNumber, []);
+  // const events = await getPastEvents(28858152, latestBlockNumber, []);
+  const events = await fetchEvents({type: 'Deposit', deposit, netId, currency, amount});
+
+
   console.log(events.length);
   const leaves = events
-    .sort((a, b) => a.returnValues.leafIndex - b.returnValues.leafIndex) // Sort events in chronological order
-    .map(e => e.returnValues.commitment)
+    .sort((a, b) => a.leafIndex - b.leafIndex) // Sort events in chronological order
+    .map(e => e.commitment)
   const tree = new merkleTree(MERKLE_TREE_HEIGHT, leaves)
 
   // Find current commitment in the tree
-  const depositEvent = events.find(e => e.returnValues.commitment === toHex(deposit.commitment))
-  const leafIndex = depositEvent ? depositEvent.returnValues.leafIndex : -1
+  const depositEvent = events.find(e => e.commitment === toHex(deposit.commitment))
+  const leafIndex = depositEvent ? depositEvent.leafIndex : -1
 
   // Validate that our data is correct
   const root = await tree.root()
@@ -173,9 +312,9 @@ async function generateMerkleProof(deposit) {
  * @param fee Relayer fee
  * @param refund Receive ether for exchanged tokens
  */
-async function generateProof({ deposit, recipient, relayerAddress = 0, fee = 0, refund = 0 }) {
+async function generateProof({ deposit, recipient, relayerAddress = 0, fee = 0, refund = 0, netId, currency, amount }) {
   // Compute merkle proof of our commitment
-  const { root, path_elements, path_index } = await generateMerkleProof(deposit)
+  const { root, path_elements, path_index } = await generateMerkleProof({deposit, netId, currency, amount})
 
   // Prepare circuit input
   const input = {
@@ -236,7 +375,7 @@ async function withdraw({ deposit, currency, amount, recipient, relayerURL, refu
     if (fee.gt(fromDecimals({ amount, decimals }))) {
       throw new Error('Too high refund')
     }
-    const { proof, args } = await generateProof({ deposit, recipient, relayerAddress, fee, refund })
+    const { proof, args } = await generateProof({ deposit, recipient, relayerAddress, fee, refund, netId, currency, amount })
 
     console.log('Sending withdraw transaction through relay')
     try {
@@ -257,7 +396,7 @@ async function withdraw({ deposit, currency, amount, recipient, relayerURL, refu
       }
     }
   } else { // using private key
-    const { proof, args } = await generateProof({ deposit, recipient, refund })
+    const { proof, args } = await generateProof({ deposit, recipient, refund, netId, currency, amount })
 
     console.log('Submitting withdraw transaction')
     await sacred.methods.withdraw(proof, ...args).send({ from: senderAccount, value: refund.toString(), gas: 1e6 })
@@ -595,6 +734,15 @@ async function main() {
         const { currency, amount, netId, deposit } = parseNote(noteString)
         await init({ rpc: program.rpc, noteNetId: netId, currency, amount })
         await withdraw({ deposit, currency, amount, recipient, refund, relayerURL: program.relayer })
+      })
+
+    program
+      .command('cache <type> <netId> <currency> <amount>')
+      .description('Cache the events locally')
+      .action(async (type, netId, currency, amount) => {
+        currency = currency.toLowerCase()
+        await init({ rpc: program.rpc, noteNetId: netId, currency, amount })
+        await fetchEvents({ type, netId, currency, amount });
       })
     program
       .command('sacredtest <currency> <amount> <recipient>')
