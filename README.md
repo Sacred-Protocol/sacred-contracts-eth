@@ -34,6 +34,13 @@ Update contract addresses in `config.js`
 $ ./cli.js sacredtest eth 0.1 <RECIPIENT ADDR> --rpc <RPC URL>
 ```
 
+### Cache
+
+Cache Events
+```bash
+$ node ./cli.js cache <EVENT_TYPE> <NET_ID> <CURRENCY> <AMOUNT> --rpc <RPC URL>
+```
+
 ## Contract guidance
 
 TBA.
