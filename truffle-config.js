@@ -60,6 +60,26 @@ module.exports = {
       // timeoutBlocks: 200,
       skipDryRun: true
     },
+    mumbai: {
+        provider: () => new HDWalletProvider(process.env.PRIVATE_KEY, process.env.INFURA_MUMBAI ),
+        network_id: 80001,
+        skipDryRun: true,
+    },
+    matic: {
+      provider: () => new HDWalletProvider(process.env.PRIVATE_KEY, process.env.INFURA_MATIC ),
+      network_id: 137,
+      gas: 6000000,
+      gasPrice: utils.toWei('200', 'gwei'),
+      skipDryRun: true
+    },
+    rinkeby: {
+      provider: () => new HDWalletProvider(process.env.PRIVATE_KEY, process.env.INFURA_RINKEBY ),
+      network_id: 4,
+      //networkCheckTimeout: 10000, 
+      //gas: 6000000,
+      //gasPrice: utils.toWei('200', 'gwei'),
+      skipDryRun: true,
+    },
 
     // Useful for private networks
     // private: {
