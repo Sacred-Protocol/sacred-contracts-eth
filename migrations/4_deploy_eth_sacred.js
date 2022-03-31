@@ -11,6 +11,7 @@ module.exports = function(deployer, network, accounts) {
     const ethAmounts = ETH_AMOUNTS.split(",");
     const verifier = await Verifier.deployed()
     const hasherInstance = await hasherContract.deployed()
+    let addresses = []
     for(var i = 0; i < ethAmounts.length; i++) {
       let amount = ethAmounts[i];
       console.log("Deploying ETHSacred instance: ", amount)
@@ -25,8 +26,11 @@ module.exports = function(deployer, network, accounts) {
         WETH_TOKEN,
         accounts[0], 
         OPERATOR_FEE)
-      console.log('ETHSacred\'s address ', sacred.address)
+      addresses[i] = sacred.address
     }
-    
+    for(var i = 0; i < ethAmounts.length; i++) {
+      let amount = ethAmounts[i];
+      console.log('' + amount + ' - ETHSacred\'s address ', addresses[i])
+    }
   })
 }
