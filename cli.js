@@ -68,11 +68,12 @@ function createDeposit({ nullifier, secret }) {
  * @param amount Deposit amount
  */
 async function deposit({ currency, amount }) {
+  console.log(currency, amount);
   const deposit = createDeposit({ nullifier: rbigint(31), secret: rbigint(31) })
   const note = toHex(deposit.preimage, 62)
   const noteString = `sacred-${currency}-${amount}-${netId}-${note}`
   console.log(`Your note: ${noteString}`)
-  if (currency === 'eth') {
+  if (currency === 'eth' || currency === 'matic') {
     await printETHBalance({ address: sacred._address, name: 'Sacred' })
     await printETHBalance({ address: senderAccount, name: 'Sender account' })
     const value = isLocalRPC ? ETH_AMOUNT : fromDecimals({ amount, decimals: 18 })
@@ -157,7 +158,6 @@ function loadCachedEvents({ type, netId, currency, amount }) {
   try {
     module = require(fileName);
   } catch(e) {
-    console.log(e);
     fs.writeFileSync(fileName, JSON.stringify([], null, 2), 'utf8');
     module = [];
   }
@@ -380,8 +380,8 @@ async function withdraw({ deposit, currency, amount, recipient, relayerURL, refu
     console.log('Sending withdraw transaction through relay')
     try {
       const relay = await axios.post(relayerURL + '/relay', { contract: sacred._address, proof, args })
-      if (netId === 1 || netId === 42) {
-        console.log(`Transaction submitted through the relay. View transaction on etherscan https://${getCurrentNetworkName()}etherscan.io/tx/${relay.data.txHash}`)
+      if (netId === 1 || netId === 42 || netId === 4 || netId === 80001) {
+        console.log(`Transaction submitted through the relay. View transaction on etherscan ${getCurrentBlockExplorer(netId, currency)}/tx/${relay.data.txHash}`)
       } else {
         console.log(`Transaction submitted through the relay. The transaction hash is ${relay.data.txHash}`)
       }
@@ -401,8 +401,8 @@ async function withdraw({ deposit, currency, amount, recipient, relayerURL, refu
     console.log('Submitting withdraw transaction')
     await sacred.methods.withdraw(proof, ...args).send({ from: senderAccount, value: refund.toString(), gas: 1e6 })
       .on('transactionHash', function (txHash) {
-        if (netId === 1 || netId === 42) {
-          console.log(`View transaction on etherscan https://${getCurrentNetworkName()}etherscan.io/tx/${txHash}`)
+        if (netId === 1 || netId === 42 || netId === 4 || netId === 80001) {
+          console.log(`View transaction on etherscan ${getCurrentBlockExplorer(netId, currency)}/tx/${txHash}`)
         } else {
           console.log(`The transaction hash is ${txHash}`)
         }
@@ -501,14 +501,8 @@ function toDecimals(value, decimals, fixed) {
   return value
 }
 
-function getCurrentNetworkName() {
-  switch (netId) {
-  case 1:
-    return ''
-  case 42:
-    return 'kovan.'
-  }
-
+function getCurrentBlockExplorer(netId, currency) {
+  return config.deployments[`netId${netId}`][currency].blockExplorer;
 }
 
 function calculateFee({ gasPrices, currency, amount, refund, ethPrices, relayerServiceFee, decimals }) {
@@ -522,6 +516,11 @@ function calculateFee({ gasPrices, currency, amount, refund, ethPrices, relayerS
   let desiredFee
   switch (currency) {
   case 'eth': {
+    desiredFee = expense.add(feePercent)
+    break
+  }
+
+  case 'matic': {
     desiredFee = expense.add(feePercent)
     break
   }
@@ -678,7 +677,7 @@ async function init({ rpc, noteNetId, currency = 'dai', amount = '100' }) {
   if (noteNetId && Number(noteNetId) !== netId) {
     throw new Error('This note is for a different network. Specify the --rpc option explicitly')
   }
-  isLocalRPC = netId > 42
+  isLocalRPC = netId > 80001
 
   if (isLocalRPC) {
     sacredAddress = currency === 'eth' ? contractJson.networks[netId].address : erc20sacredJson.networks[netId].address
@@ -777,8 +776,8 @@ async function main() {
         console.log('\n=============Deposit=================')
         console.log('Deposit     :', amount, currency)
         console.log('Date        :', depositDate.toLocaleDateString(), depositDate.toLocaleTimeString())
-        console.log('From        :', `https://${getCurrentNetworkName()}etherscan.io/address/${depositInfo.from}`)
-        console.log('Transaction :', `https://${getCurrentNetworkName()}etherscan.io/tx/${depositInfo.txHash}`)
+        console.log('From        :', `${getCurrentBlockExplorer(noteNetId, currency)}/address/${depositInfo.from}`)
+        console.log('Transaction :', `${getCurrentBlockExplorer(noteNetId, currency)}/tx/${depositInfo.txHash}`)
         console.log('Commitment  :', depositInfo.commitment)
         if (deposit.isSpent) {
           console.log('The note was not spent')
@@ -790,8 +789,8 @@ async function main() {
         console.log('Withdrawal  :', withdrawInfo.amount, currency)
         console.log('Relayer Fee :', withdrawInfo.fee, currency)
         console.log('Date        :', withdrawalDate.toLocaleDateString(), withdrawalDate.toLocaleTimeString())
-        console.log('To          :', `https://${getCurrentNetworkName()}etherscan.io/address/${withdrawInfo.to}`)
-        console.log('Transaction :', `https://${getCurrentNetworkName()}etherscan.io/tx/${withdrawInfo.txHash}`)
+        console.log('To          :', `${getCurrentBlockExplorer(noteNetId, currency)}/address/${withdrawInfo.to}`)
+        console.log('Transaction :', `${getCurrentBlockExplorer(noteNetId, currency)}/tx/${withdrawInfo.txHash}`)
         console.log('Nullifier   :', withdrawInfo.nullifier)
       })
     program
