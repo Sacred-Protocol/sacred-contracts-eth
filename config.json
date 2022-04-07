@@ -1,0 +1,30 @@
+{
+  "deployments": {
+    "netId4": {
+      "eth": {
+        "instanceAddress": {
+          "1": "0x24e2199F1228e3e7893A9F455A5aa3626228277E",
+          "10": "0xD0009fB5a9F0Bde1709f4056B23f813BdB14D7Ce",
+          "100": "0x19BBa208F2e3e16De7d08736A77E9Ea6dD6b62b5",
+          "0.1": "0x301226d268C1BBac02e30CF5EE0253076E94Ef32"
+        },
+        "symbol": "ETH",
+        "decimals": 18
+      },
+      "dai": {
+        "instanceAddress": {
+          "100": "0x5c249bf2712aC61FBB8600878BABe3c3983cA6B5"
+        },
+        "symbol": "ETH",
+        "decimals": 18
+      },
+      "usdt": {
+        "instanceAddress": {
+          "1000": "0xB42b8cACa32354FeB341C6b7e73EB45532a6f8E9"
+        },
+        "symbol": "ETH",
+        "decimals": 18
+      }
+    }
+  }
+}

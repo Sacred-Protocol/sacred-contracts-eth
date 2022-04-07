@@ -7,12 +7,29 @@ contract IVerifier {
   function verifyProof(bytes memory _proof, uint256[6] memory _input) public returns(bool);
 }
 
+interface AddressesProvider {
+    function getPool()
+    external
+    view
+    returns (address);
+}
+
+interface AToken {
+  function balanceOf(address _user) external view returns (uint256);
+  function approve(address spender, uint256 amount) external returns (bool);
+  function transfer(address receiver, uint256 amount) external returns (bool);
+}
+
 contract Sacred is MerkleTreeWithHistory, ReentrancyGuard {
   uint256 public denomination;
   mapping(bytes32 => bool) public nullifierHashes;
   // we store all commitments just to prevent accidental deposits with the same commitment
   mapping(bytes32 => bool) public commitments;
   IVerifier public verifier;
+
+  uint256 public collateralAmount;
+  uint256 public totalAaveInterests;
+  address public aaveInterestsProxy;
 
   // operator can update snark verification key
   // after the final trusted setup ceremony operator rights are supposed to be transferred to zero address
@@ -113,5 +130,9 @@ contract Sacred is MerkleTreeWithHistory, ReentrancyGuard {
   /** @dev operator can change his address */
   function changeOperator(address _newOperator) external onlyOperator {
     operator = _newOperator;
+  }
+
+  function setAaveInterestsProxy(address _aaveInterestsProxy) external onlyOperator {
+    aaveInterestsProxy = _aaveInterestsProxy;
   }
 }

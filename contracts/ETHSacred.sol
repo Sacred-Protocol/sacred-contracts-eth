@@ -2,13 +2,6 @@ pragma solidity 0.5.17;
 
 import "./Sacred.sol";
 
-interface AddressesProvider {
-    function getPool()
-    external
-    view
-    returns (address);
-}
-
 interface WETHGateway {
     function depositETH(address lendingPool, address onBehalfOf, uint16 referralCode)
     external
@@ -18,26 +11,10 @@ interface WETHGateway {
     external;
 }
 
-interface AToken {
-  function balanceOf(address _user) external view returns (uint256);
-  function approve(address spender, uint256 amount) external returns (bool);
-  function transfer(address receiver, uint256 amount) external returns (bool);
-}
-
 contract ETHSacred is Sacred {
-
   address public lendingPoolAddressProvider;
   address public wETHGateway;
   address public wETHToken;
-  uint256 private collateralAmount;
-  uint256 public totalAaveInterests;
-  address public aaveInterestsProxy;
-  address private owner;
-
-  modifier onlyOwner() {
-    require(msg.sender == owner, "Not authorized");
-    _;
-  }
 
   constructor (
     IVerifier _verifier,
@@ -52,7 +29,6 @@ contract ETHSacred is Sacred {
     lendingPoolAddressProvider = _lendingPoolAddressProvider;
     wETHGateway = _wETHGateway;
     wETHToken = _wETHToken;
-    owner = msg.sender;
   }
 
   function _processDeposit() internal {
@@ -82,10 +58,6 @@ contract ETHSacred is Sacred {
     }
     collateralAmount -= denomination;
     collectAaveInterests();
-  }
-
-  function setAaveInterestsProxy(address _aaveInterestsProxy) external onlyOwner {
-    aaveInterestsProxy = _aaveInterestsProxy;
   }
 
   function collectAaveInterests() public {
