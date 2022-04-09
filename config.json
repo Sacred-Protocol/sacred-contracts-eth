@@ -3,27 +3,43 @@
     "netId4": {
       "eth": {
         "instanceAddress": {
-          "1": "0x24e2199F1228e3e7893A9F455A5aa3626228277E",
-          "10": "0xD0009fB5a9F0Bde1709f4056B23f813BdB14D7Ce",
-          "100": "0x19BBa208F2e3e16De7d08736A77E9Ea6dD6b62b5",
-          "0.1": "0x301226d268C1BBac02e30CF5EE0253076E94Ef32"
+          "1": "0x505CE76d5A38E3cC0F8c1F913BFB65ED5fA96437",
+          "10": "0xb901Ba63d3a43D5fe2C2c3F0C8215638aB891A35",
+          "100": "0x5E58FA927816b2d79DBb8D2B5Be680Aa43de90A1",
+          "0.1": "0x8d2dB2B8d96555d27898427402DbE2284AA49ebD"
         },
         "symbol": "ETH",
         "decimals": 18
       },
       "dai": {
         "instanceAddress": {
-          "100": "0x5c249bf2712aC61FBB8600878BABe3c3983cA6B5"
+          "100": "0x37d42Eec9d3C8f6a797903eaAefcE7dCa63F3A8A",
+          "1000": "0xd6004E7a6cA31738E64e09AEa75953ce18153410",
+          "10000": "0xE439eE1C71d78387F0634F908158fe305DCD50C1",
+          "100000": "0xAFe5E963938E8992404a5cEfc7c4E4457F0596D4"
         },
         "symbol": "ETH",
         "decimals": 18
       },
       "usdt": {
         "instanceAddress": {
-          "1000": "0xB42b8cACa32354FeB341C6b7e73EB45532a6f8E9"
+          "100": "0xFa9b0b92427Db99E9D34647f6470f909F19258a9",
+          "1000": "0xe7CBB0998Bf11B9B9d813391eb8DfC04039408b2",
+          "10000": "0x28bf1447e5C86C3dB3badB7b9eCE11B9334C8d36",
+          "100000": "0x33F2249c512719483D6F459494c25c72776Ea964"
         },
         "symbol": "ETH",
-        "decimals": 18
+        "decimals": 6
+      },
+      "usdc": {
+        "instanceAddress": {
+          "100": "0xA55000F20C8eA741eBCb9F8C04552A309E958f7A",
+          "1000": "0x1346622f8fE7BadcFdE852e997892f18984c54dc",
+          "10000": "0xf589493D95BAac950d3D047Ce02736Cd842Ad686",
+          "100000": "0xf75C833B0B30e5839792bb63e21e6e90a15Cc4EC"
+        },
+        "symbol": "ETH",
+        "decimals": 6
       }
     }
   }
