@@ -15,7 +15,7 @@ const Web3 = require('web3')
 const buildGroth16 = require('websnark/src/groth16')
 const websnarkUtils = require('websnark/src/utils')
 const { toWei, fromWei, toBN, BN } = require('web3-utils')
-const config = require('../config.json')
+const config = require('./config.json')
 const program = require('commander')
 
 let web3, sacred, circuit, proving_key, groth16, erc20, senderAccount, netId
@@ -749,7 +749,7 @@ async function main() {
       .description('Perform an automated test. It deposits and withdraws one ETH. Uses Kovan Testnet.')
       .action(async (currency, amount, recipient) => {
         currency = currency.toLowerCase()
-        await init({ rpc: program.rpc, nodeNetId: 42, currency, amount })
+        await init({ rpc: program.rpc, nodeNetId: 4, currency, amount })
         let noteString = await deposit({ currency, amount })
         const { deposit: depositNote } = parseNote(noteString)
         const refund = '0'

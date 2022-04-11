@@ -58,8 +58,9 @@ module.exports = function(deployer, network, accounts) {
           OPERATOR_FEE
         )
         addresses.deployments[netKey][token.name].instanceAddress[tokenAmounts[j]] = sacred.address
-        addresses.deployments[netKey][token.name].symbol = config.eth.symbol
-        addresses.deployments[netKey][token.name].decimals = config.eth.decimals
+        addresses.deployments[netKey][token.name].symbol = token.symbol
+        addresses.deployments[netKey][token.name].decimals = token.decimals
+        addresses.deployments[netKey][token.name].tokenAddress = token.token[network]
       }
     }
     fs.writeFileSync('./config.json', JSON.stringify(addresses, null, '  '))

@@ -19,7 +19,8 @@
           "100000": "0xAFe5E963938E8992404a5cEfc7c4E4457F0596D4"
         },
         "symbol": "ETH",
-        "decimals": 18
+        "decimals": 18,
+        "tokenAddress": "0x4aAded56bd7c69861E8654719195fCA9C670EB45"
       },
       "usdt": {
         "instanceAddress": {
@@ -29,7 +30,8 @@
           "100000": "0x33F2249c512719483D6F459494c25c72776Ea964"
         },
         "symbol": "ETH",
-        "decimals": 6
+        "decimals": 6,
+        "tokenAddress": "0x326005cFdF58bfB38650396836BEBF815F5ab4dD"
       },
       "usdc": {
         "instanceAddress": {
@@ -39,7 +41,8 @@
           "100000": "0xf75C833B0B30e5839792bb63e21e6e90a15Cc4EC"
         },
         "symbol": "ETH",
-        "decimals": 6
+        "decimals": 6,
+        "tokenAddress": "0xb18d016cDD2d9439A19f15633005A6b2cd6Aa774"
       }
     }
   }
