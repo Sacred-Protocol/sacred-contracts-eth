@@ -23,7 +23,6 @@ let MERKLE_TREE_HEIGHT, ETH_AMOUNT, TOKEN_AMOUNT, PRIVATE_KEY
 
 /** Whether we are in a browser or node.js */
 const inBrowser = (typeof window !== 'undefined')
-let isLocalRPC = false
 
 /** Generate random number of specified byte length */
 const rbigint = nbytes => snarkjs.bigInt.leBuff2int(crypto.randomBytes(nbytes))
@@ -75,7 +74,7 @@ async function deposit({ currency, amount }) {
   if (currency === 'eth') {
     await printETHBalance({ address: sacred._address, name: 'Sacred' })
     await printETHBalance({ address: senderAccount, name: 'Sender account' })
-    const value = isLocalRPC ? ETH_AMOUNT : fromDecimals({ amount, decimals: 18 })
+    const value = fromDecimals({ amount, decimals: 18 })
     console.log('Submitting deposit transaction')
     await sacred.methods.deposit(toHex(deposit.commitment)).send({ value, from: senderAccount, gas: 2e6 })
     await printETHBalance({ address: sacred._address, name: 'Sacred' })
@@ -83,13 +82,8 @@ async function deposit({ currency, amount }) {
   } else { // a token
     await printERC20Balance({ address: sacred._address, name: 'Sacred' })
     await printERC20Balance({ address: senderAccount, name: 'Sender account' })
-    const decimals = isLocalRPC ? 18 : config.deployments[`netId${netId}`][currency].decimals
-    const tokenAmount = isLocalRPC ? TOKEN_AMOUNT : fromDecimals({ amount, decimals })
-    if (isLocalRPC) {
-      console.log('Minting some test tokens to deposit')
-      await erc20.methods.mint(senderAccount, tokenAmount).send({ from: senderAccount, gas: 2e6 })
-    }
-
+    const decimals = config.deployments[`netId${netId}`][currency].decimals
+    const tokenAmount = fromDecimals({ amount, decimals })
     const allowance = await erc20.methods.allowance(senderAccount, sacred._address).call({ from: senderAccount })
     console.log('Current allowance is', fromWei(allowance))
     if (toBN(allowance).lt(toBN(tokenAmount))) {
@@ -280,9 +274,6 @@ async function generateMerkleProof({deposit, netId, currency, amount}) {
    */
   // const events = await getPastEvents(28858152, latestBlockNumber, []);
   const events = await fetchEvents({type: 'Deposit', deposit, netId, currency, amount});
-
-
-  console.log(events.length);
   const leaves = events
     .sort((a, b) => a.leafIndex - b.leafIndex) // Sort events in chronological order
     .map(e => e.commitment)
@@ -370,7 +361,7 @@ async function withdraw({ deposit, currency, amount, recipient, relayerURL, refu
     assert(netId === await web3.eth.net.getId() || netId === '*', 'This relay is for different network')
     console.log('Relay address: ', relayerAddress)
 
-    const decimals = isLocalRPC ? 18 : config.deployments[`netId${netId}`][currency].decimals
+    const decimals = config.deployments[`netId${netId}`][currency].decimals
     const fee = calculateFee({ gasPrices, currency, amount, refund, ethPrices, relayerServiceFee, decimals })
     if (fee.gt(fromDecimals({ amount, decimals }))) {
       throw new Error('Too high refund')
@@ -678,23 +669,16 @@ async function init({ rpc, noteNetId, currency = 'dai', amount = '100' }) {
   if (noteNetId && Number(noteNetId) !== netId) {
     throw new Error('This note is for a different network. Specify the --rpc option explicitly')
   }
-  isLocalRPC = netId > 42
 
-  if (isLocalRPC) {
-    sacredAddress = currency === 'eth' ? contractJson.networks[netId].address : erc20sacredJson.networks[netId].address
-    tokenAddress = currency !== 'eth' ? erc20ContractJson.networks[netId].address : null
-    senderAccount = (await web3.eth.getAccounts())[0]
-  } else {
-    try {
-      sacredAddress = config.deployments[`netId${netId}`][currency].instanceAddress[amount]
-      if (!sacredAddress) {
-        throw new Error()
-      }
-      tokenAddress = config.deployments[`netId${netId}`][currency].tokenAddress
-    } catch (e) {
-      console.error('There is no such sacred instance, check the currency and amount you provide')
-      process.exit(1)
+  try {
+    sacredAddress = config.deployments[`netId${netId}`][currency].instanceAddress[amount]
+    if (!sacredAddress) {
+      throw new Error()
     }
+    tokenAddress = config.deployments[`netId${netId}`][currency].tokenAddress
+  } catch (e) {
+    console.error('There is no such sacred instance, check the currency and amount you provide')
+    process.exit(1)
   }
   sacred = new web3.eth.Contract(contractJson.abi, sacredAddress)
   erc20 = currency !== 'eth' ? new web3.eth.Contract(erc20ContractJson.abi, tokenAddress) : {}

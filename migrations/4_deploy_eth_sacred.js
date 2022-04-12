@@ -10,7 +10,7 @@ let addresses = require('../config.json')
 
 module.exports = function(deployer, network, accounts) {
   return deployer.then(async () => {
-    const { MERKLE_TREE_HEIGHT, OPERATOR_FEE, LENDING_POOL_ADDRESS_PROVIDER, WETH_GATEWAY, WETH_TOKEN } = process.env
+    const { MERKLE_TREE_HEIGHT, OPERATOR_FEE, LENDING_POOL_ADDRESS_PROVIDER, WETH_GATEWAY } = process.env
     const ethAmounts = config.eth.amounts;
     const verifier = await Verifier.deployed()
     const hasherInstance = await hasherContract.deployed()

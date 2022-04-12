@@ -3,33 +3,33 @@
     "netId4": {
       "eth": {
         "instanceAddress": {
-          "1": "0x505CE76d5A38E3cC0F8c1F913BFB65ED5fA96437",
-          "10": "0xb901Ba63d3a43D5fe2C2c3F0C8215638aB891A35",
-          "100": "0x5E58FA927816b2d79DBb8D2B5Be680Aa43de90A1",
-          "0.1": "0x8d2dB2B8d96555d27898427402DbE2284AA49ebD"
+          "1": "0xa393ab68cBD4214f7090765A4bb5b9E0c252A00A",
+          "10": "0x826cF0C10Cbd4d5d37723ed6BA3322CA4F40a082",
+          "100": "0x2Ef11AA265Dd8c03462035E49733cA9fB0e84085",
+          "0.1": "0x73c11ADb7D2C7C4CeAf581246Cf471d0A44891D0"
         },
         "symbol": "ETH",
         "decimals": 18
       },
       "dai": {
         "instanceAddress": {
-          "100": "0x37d42Eec9d3C8f6a797903eaAefcE7dCa63F3A8A",
-          "1000": "0xd6004E7a6cA31738E64e09AEa75953ce18153410",
-          "10000": "0xE439eE1C71d78387F0634F908158fe305DCD50C1",
-          "100000": "0xAFe5E963938E8992404a5cEfc7c4E4457F0596D4"
+          "100": "0xF9238D9d03EB8A6D86279274eA56E08F984aaf37",
+          "1000": "0x3c9977dce647Ca3A5bA952a1b97D1A4Defd53C8c",
+          "10000": "0x77078fc5d1D201F8772f20bC5F300cA5CDC1Ed4e",
+          "100000": "0xc5A5f534f79a1cD6A959836AB76681830323f407"
         },
-        "symbol": "ETH",
+        "symbol": "DAI",
         "decimals": 18,
         "tokenAddress": "0x4aAded56bd7c69861E8654719195fCA9C670EB45"
       },
       "usdt": {
         "instanceAddress": {
-          "100": "0xFa9b0b92427Db99E9D34647f6470f909F19258a9",
-          "1000": "0xe7CBB0998Bf11B9B9d813391eb8DfC04039408b2",
-          "10000": "0x28bf1447e5C86C3dB3badB7b9eCE11B9334C8d36",
-          "100000": "0x33F2249c512719483D6F459494c25c72776Ea964"
+          "100": "0x2722Dbb8ac381B95AC0cf2B81b92Bc6517696480",
+          "1000": "0x9A28dAb99c80d15d9144B70217De109e61220469",
+          "10000": "0xD80786580b30CB7785D40E18D1bb009A3cd7C81B",
+          "100000": "0x5E3fe8cB28E5D8c7C02591D41EFd7c88adAf898a"
         },
-        "symbol": "ETH",
+        "symbol": "USDT",
         "decimals": 6,
         "tokenAddress": "0x326005cFdF58bfB38650396836BEBF815F5ab4dD"
       },

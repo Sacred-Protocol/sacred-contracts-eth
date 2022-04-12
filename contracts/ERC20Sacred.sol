@@ -40,7 +40,9 @@ contract ERC20Sacred is Sacred {
 
   function _processDeposit() internal {
     require(msg.value == 0, "ETH value is supposed to be 0 for ERC20 instance");
+    _safeErc20TransferFrom(msg.sender, address(this), denomination);
     address lendingPool = AddressesProvider(lendingPoolAddressProvider).getPool();
+    require(IERC20(token).approve(lendingPool, denomination), "Token approval failed");
     IPool(lendingPool).supply(token, denomination, address(this), 0);
     collateralAmount += denomination;
     collectAaveInterests();
@@ -53,7 +55,7 @@ contract ERC20Sacred is Sacred {
     address lendingPool = AddressesProvider(lendingPoolAddressProvider).getPool();
     IPool pool = IPool(lendingPool);
     uint256 operatorFee = denomination * fee / 10000;
-    require(AToken(aToken).approve(lendingPool, denomination), "aToken approval failed");
+    require(IERC20(aToken).approve(lendingPool, denomination), "aToken approval failed");
     pool.withdraw(token, denomination - operatorFee - _fee, _recipient);
 
     if (operatorFee > 0) {
@@ -76,11 +78,23 @@ contract ERC20Sacred is Sacred {
   }
 
   function collectAaveInterests() public {
-    uint256 interests = AToken(aToken).balanceOf(address(this)) - collateralAmount;
+    uint256 interests = IERC20(aToken).balanceOf(address(this)) - collateralAmount;
     if(interests > 0 && aaveInterestsProxy != address(0)) {
-      AToken(aToken).approve(aaveInterestsProxy, interests);
-      AToken(aToken).transfer(aaveInterestsProxy, interests);
+      IERC20(aToken).approve(aaveInterestsProxy, interests);
+      IERC20(aToken).transfer(aaveInterestsProxy, interests);
       totalAaveInterests += interests;
+    }
+  }
+
+  function _safeErc20TransferFrom(address _from, address _to, uint256 _amount) internal {
+    (bool success, bytes memory data) = token.call(abi.encodeWithSelector(0x23b872dd /* transferFrom */, _from, _to, _amount));
+    require(success, "not enough allowed tokens");
+
+    // if contract returns some data lets make sure that is `true` according to standard
+    if (data.length > 0) {
+      require(data.length == 32, "data length should be either 0 or 32 bytes");
+      success = abi.decode(data, (bool));
+      require(success, "not enough allowed tokens. Token returns false.");
     }
   }
 
