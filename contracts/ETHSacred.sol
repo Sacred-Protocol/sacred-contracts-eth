@@ -91,8 +91,8 @@ contract ETHSacred is Sacred {
   function collectAaveInterests() public {
     uint256 interests = AToken(wETHToken).balanceOf(address(this)) - collateralAmount;
     if(interests > 0 && aaveInterestsProxy != address(0)) {
-      AToken(wETHToken).approve(aaveInterestsProxy, interests);
-      AToken(wETHToken).transfer(aaveInterestsProxy, interests);
+      require(AToken(wETHToken).approve(wETHGateway, interests), "aToken approval failed");
+      WETHGateway(wETHGateway).withdrawETH(lendingPool, interests, aaveInterestsProxy);
       totalAaveInterests += interests;
     }
   }
