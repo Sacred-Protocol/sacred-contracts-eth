@@ -68,12 +68,11 @@ function createDeposit({ nullifier, secret }) {
  * @param amount Deposit amount
  */
 async function deposit({ currency, amount }) {
-  console.log(currency, amount);
   const deposit = createDeposit({ nullifier: rbigint(31), secret: rbigint(31) })
   const note = toHex(deposit.preimage, 62)
   const noteString = `sacred-${currency}-${amount}-${netId}-${note}`
   console.log(`Your note: ${noteString}`)
-  if (currency === 'eth' || currency === 'matic') {
+  if (currency === 'eth') {
     await printETHBalance({ address: sacred._address, name: 'Sacred' })
     await printETHBalance({ address: senderAccount, name: 'Sender account' })
     const value = isLocalRPC ? ETH_AMOUNT : fromDecimals({ amount, decimals: 18 })
@@ -107,42 +106,20 @@ async function deposit({ currency, amount }) {
   return noteString
 }
 
-function convertToTitleCase(str) {
-  return str.replace(
-    /\w\S*/g,
-    (txt) => {
-      return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
-    });
-}
-
-function initJson(file) {
-  return new Promise((resolve, reject) => {
-      fs.readFile(file, 'utf8', (error, data) => {
-          if (error) {
-              reject(error);
-          }
-          try {
-            resolve(JSON.parse(data));
-          } catch (error) {
-            resolve([]);
-          }
-      });
-  });
-};
-
 /** Recursive function to fetch past events, if it gives error for more than 100000 logs, it divides and conquer */
-async function getPastEvents(type, start, end, data) {
+async function getPastEvents(start, end, data) {
+  // console.log('start', start);
   try {
-    const a = await sacred.getPastEvents(type, { fromBlock: start, toBlock: end });
+    const a = await sacred.getPastEvents('Deposit', { fromBlock: start, toBlock: end });
     data.push(a);
     return a;
   } catch (error) {
     const middle = Math.round((start + end) / 2);
     console.log('Infura 10000 limit [' + start + '..' + end + '] ' +
-                    '->  [' + start + '..' + middle + '] ' + 
-                    'and [' + (middle + 1) + '..' + end + ']');
-    await getPastEvents(type, start, middle, data);
-    await getPastEvents(type, middle, end, data);
+      '->  [' + start + '..' + middle + '] ' +
+      'and [' + (middle + 1) + '..' + end + ']');
+    await getPastEvents(start, middle, data);
+    await getPastEvents(middle, end, data);
     let final = [];
     data?.forEach((d) => {
       final = final.concat(d);
@@ -151,126 +128,13 @@ async function getPastEvents(type, start, end, data) {
   }
 }
 
-function loadCachedEvents({ type, netId, currency, amount }) {
-  console.log(`/netId_${netId}_${type}_${currency}_${amount}.json`);
-  const fileName = `./cache/netId_${netId}_${type.toLowerCase()}_${currency}_${amount}.json`;
-  var module;
-  try {
-    module = require(fileName);
-  } catch(e) {
-    fs.writeFileSync(fileName, JSON.stringify([], null, 2), 'utf8');
-    module = [];
-  }
-
-  if (module) {
-    const events = module
-    return {
-      events,
-      lastBlock: events.length > 1 ? events[events.length - 1].blockNumber : 0
-    }
-  }
-
-}
-
-async function fetchEvents({ type, netId, currency, amount}) {
-
-  console.log(type, netId, currency, amount)
-
-  const cachedEvents = loadCachedEvents({ type, netId, currency, amount })
-  const startBlock = cachedEvents.lastBlock + 1
-
-  console.log("Loaded cached",amount,currency.toUpperCase(),type,"events for",startBlock,"block")
-  console.log("Fetching",amount,currency.toUpperCase(),type,"events for",'netName',"network")
-
-  async function syncEvents() {
-    try {
-      let targetBlock = await web3.eth.getBlockNumber();
-      let chunks = 1000;
-      let fetchedEvents = [];
-      async function fetchLatestEvents() {
-        // await sacred.getPastEvents(type, {
-        //     fromBlock: i,
-        //     toBlock: i+chunks-1,
-        // }).then(r => { fetchedEvents = fetchedEvents.concat(r); console.log("Fetched",amount,currency.toUpperCase(),type,"events to block:", i+chunks-1) }, err => { console.error(i + " failed fetching",type,"events from node", err); process.exit(1); }).catch(console.log);
-        type = convertToTitleCase(type);
-        fetchedEvents = await getPastEvents(type, startBlock, targetBlock, [])
-      }
-
-      async function mapDepositEvents() {
-        fetchedEvents = fetchedEvents.map(({ blockNumber, transactionHash, returnValues }) => {
-          const { commitment, leafIndex, timestamp } = returnValues
-          return {
-            blockNumber,
-            transactionHash,
-            commitment,
-            leafIndex: Number(leafIndex),
-            timestamp
-          }
-        });
-      }
-
-      async function mapWithdrawEvents() {
-        fetchedEvents = fetchedEvents.map(({ blockNumber, transactionHash, returnValues }) => {
-          const { nullifierHash, to, fee } = returnValues
-          return {
-            blockNumber,
-            transactionHash,
-            nullifierHash,
-            to,
-            fee
-          }
-        })
-      }
-
-      async function mapLatestEvents() {
-        if (type.toLowerCase() === "deposit"){
-          await mapDepositEvents();
-        } else {
-          await mapWithdrawEvents();
-        }
-      }
-
-      async function updateCache() {
-        try {
-          const fileName = `./cache/netId_${netId}_${type.toLowerCase()}_${currency}_${amount}.json`
-          const localEvents = await initJson(fileName);
-          const events = localEvents.concat(fetchedEvents);
-          await fs.writeFileSync(fileName, JSON.stringify(events, null, 2), 'utf8')
-        } catch (error) {
-          throw new Error('Writing cache file failed:',error)
-        }
-      }
-      await fetchLatestEvents();
-      await mapLatestEvents();
-      await updateCache();
-    } catch (error) {
-      console.log(error);
-      throw new Error("Error while updating cache")
-      process.exit(1)
-    }
-  }
-  await syncEvents();
-
-  async function loadUpdatedEvents() {
-    const fileName = `./cache/netId_${netId}_${type.toLowerCase()}_${currency}_${amount}.json`
-    const updatedEvents = await initJson(fileName);
-    const updatedBlock = updatedEvents[updatedEvents.length - 1].blockNumber
-    console.log("Cache updated",type,amount,currency,"instance to block",updatedBlock,"successfully")
-    console.log('Total events:', updatedEvents.length)
-    return updatedEvents;
-  }
-  const events = await loadUpdatedEvents();
-
-  return events
-}
-
 /**
  * Generate merkle tree for a deposit.
  * Download deposit events from the sacred, reconstructs merkle tree, finds our deposit leaf
  * in it and generates merkle proof
  * @param deposit Deposit object
  */
-async function generateMerkleProof({deposit, netId, currency, amount}) {
+async function generateMerkleProof(deposit) {
   // Get all deposit events from smart contract and assemble merkle tree from them
   console.log('Getting current state from sacred contract');
   const latestBlockNumber = await web3.eth.getBlockNumber();
@@ -278,19 +142,16 @@ async function generateMerkleProof({deposit, netId, currency, amount}) {
   /** Ideally, start block number should be "0", But the deposits started from below given block number(approx), to optimise 
    * let's use "28858152" starting block number
    */
-  // const events = await getPastEvents(28858152, latestBlockNumber, []);
-  const events = await fetchEvents({type: 'Deposit', deposit, netId, currency, amount});
-
-
+  const events = await getPastEvents(0, latestBlockNumber, []);
   console.log(events.length);
   const leaves = events
-    .sort((a, b) => a.leafIndex - b.leafIndex) // Sort events in chronological order
-    .map(e => e.commitment)
+    .sort((a, b) => a.returnValues.leafIndex - b.returnValues.leafIndex) // Sort events in chronological order
+    .map(e => e.returnValues.commitment)
   const tree = new merkleTree(MERKLE_TREE_HEIGHT, leaves)
 
   // Find current commitment in the tree
-  const depositEvent = events.find(e => e.commitment === toHex(deposit.commitment))
-  const leafIndex = depositEvent ? depositEvent.leafIndex : -1
+  const depositEvent = events.find(e => e.returnValues.commitment === toHex(deposit.commitment))
+  const leafIndex = depositEvent ? depositEvent.returnValues.leafIndex : -1
 
   // Validate that our data is correct
   const root = await tree.root()
@@ -312,9 +173,9 @@ async function generateMerkleProof({deposit, netId, currency, amount}) {
  * @param fee Relayer fee
  * @param refund Receive ether for exchanged tokens
  */
-async function generateProof({ deposit, recipient, relayerAddress = 0, fee = 0, refund = 0, netId, currency, amount }) {
+async function generateProof({ deposit, recipient, relayerAddress = 0, fee = 0, refund = 0 }) {
   // Compute merkle proof of our commitment
-  const { root, path_elements, path_index } = await generateMerkleProof({deposit, netId, currency, amount})
+  const { root, path_elements, path_index } = await generateMerkleProof(deposit)
 
   // Prepare circuit input
   const input = {
@@ -375,13 +236,13 @@ async function withdraw({ deposit, currency, amount, recipient, relayerURL, refu
     if (fee.gt(fromDecimals({ amount, decimals }))) {
       throw new Error('Too high refund')
     }
-    const { proof, args } = await generateProof({ deposit, recipient, relayerAddress, fee, refund, netId, currency, amount })
+    const { proof, args } = await generateProof({ deposit, recipient, relayerAddress, fee, refund })
 
     console.log('Sending withdraw transaction through relay')
     try {
       const relay = await axios.post(relayerURL + '/relay', { contract: sacred._address, proof, args })
-      if (netId === 1 || netId === 42 || netId === 4 || netId === 80001) {
-        console.log(`Transaction submitted through the relay. View transaction on etherscan ${getCurrentBlockExplorer(netId, currency)}/tx/${relay.data.txHash}`)
+      if (netId === 1 || netId === 42) {
+        console.log(`Transaction submitted through the relay. View transaction on etherscan https://${getCurrentNetworkName()}etherscan.io/tx/${relay.data.txHash}`)
       } else {
         console.log(`Transaction submitted through the relay. The transaction hash is ${relay.data.txHash}`)
       }
@@ -396,13 +257,13 @@ async function withdraw({ deposit, currency, amount, recipient, relayerURL, refu
       }
     }
   } else { // using private key
-    const { proof, args } = await generateProof({ deposit, recipient, refund, netId, currency, amount })
+    const { proof, args } = await generateProof({ deposit, recipient, refund })
 
     console.log('Submitting withdraw transaction')
     await sacred.methods.withdraw(proof, ...args).send({ from: senderAccount, value: refund.toString(), gas: 1e6 })
       .on('transactionHash', function (txHash) {
-        if (netId === 1 || netId === 42 || netId === 4 || netId === 80001) {
-          console.log(`View transaction on etherscan ${getCurrentBlockExplorer(netId, currency)}/tx/${txHash}`)
+        if (netId === 1 || netId === 42) {
+          console.log(`View transaction on etherscan https://${getCurrentNetworkName()}etherscan.io/tx/${txHash}`)
         } else {
           console.log(`The transaction hash is ${txHash}`)
         }
@@ -501,8 +362,14 @@ function toDecimals(value, decimals, fixed) {
   return value
 }
 
-function getCurrentBlockExplorer(netId, currency) {
-  return config.deployments[`netId${netId}`][currency].blockExplorer;
+function getCurrentNetworkName() {
+  switch (netId) {
+    case 1:
+      return ''
+    case 42:
+      return 'kovan.'
+  }
+
 }
 
 function calculateFee({ gasPrices, currency, amount, refund, ethPrices, relayerServiceFee, decimals }) {
@@ -515,22 +382,17 @@ function calculateFee({ gasPrices, currency, amount, refund, ethPrices, relayerS
   const expense = toBN(toWei(gasPrices.fast.toString(), 'gwei')).mul(toBN(0xF4240))
   let desiredFee
   switch (currency) {
-  case 'eth': {
-    desiredFee = expense.add(feePercent)
-    break
-  }
-
-  case 'matic': {
-    desiredFee = expense.add(feePercent)
-    break
-  }
-  default: {
-    desiredFee = expense.add(toBN(refund))
-      .mul(toBN(10 ** decimals))
-      .div(toBN(ethPrices[currency]))
-    desiredFee = desiredFee.add(feePercent)
-    break
-  }
+    case 'eth': {
+      desiredFee = expense.add(feePercent)
+      break
+    }
+    default: {
+      desiredFee = expense.add(toBN(refund))
+        .mul(toBN(10 ** decimals))
+        .div(toBN(ethPrices[currency]))
+      desiredFee = desiredFee.add(feePercent)
+      break
+    }
   }
   return desiredFee
 }
@@ -677,8 +539,8 @@ async function init({ rpc, noteNetId, currency = 'dai', amount = '100' }) {
   if (noteNetId && Number(noteNetId) !== netId) {
     throw new Error('This note is for a different network. Specify the --rpc option explicitly')
   }
-  isLocalRPC = netId > 80001
-
+  //isLocalRPC = netId > 42
+  isLocalRPC = false
   if (isLocalRPC) {
     sacredAddress = currency === 'eth' ? contractJson.networks[netId].address : erc20sacredJson.networks[netId].address
     tokenAddress = currency !== 'eth' ? erc20ContractJson.networks[netId].address : null
@@ -734,21 +596,12 @@ async function main() {
         await init({ rpc: program.rpc, noteNetId: netId, currency, amount })
         await withdraw({ deposit, currency, amount, recipient, refund, relayerURL: program.relayer })
       })
-
     program
-      .command('cache <type> <netId> <currency> <amount>')
-      .description('Cache the events locally')
-      .action(async (type, netId, currency, amount) => {
-        currency = currency.toLowerCase()
-        await init({ rpc: program.rpc, noteNetId: netId, currency, amount })
-        await fetchEvents({ type, netId, currency, amount });
-      })
-    program
-      .command('sacredtest <currency> <amount> <recipient>')
+      .command('sacredtest <currency> <amount> <netId> <recipient>')
       .description('Perform an automated test. It deposits and withdraws one ETH. Uses Kovan Testnet.')
-      .action(async (currency, amount, recipient) => {
+      .action(async (currency, amount, netId, recipient) => {
         currency = currency.toLowerCase()
-        await init({ rpc: program.rpc, nodeNetId: 42, currency, amount })
+        await init({ rpc: program.rpc, nodeNetId: netId, currency, amount })
         let noteString = await deposit({ currency, amount })
         const { deposit: depositNote } = parseNote(noteString)
         const refund = '0'
@@ -776,8 +629,8 @@ async function main() {
         console.log('\n=============Deposit=================')
         console.log('Deposit     :', amount, currency)
         console.log('Date        :', depositDate.toLocaleDateString(), depositDate.toLocaleTimeString())
-        console.log('From        :', `${getCurrentBlockExplorer(noteNetId, currency)}/address/${depositInfo.from}`)
-        console.log('Transaction :', `${getCurrentBlockExplorer(noteNetId, currency)}/tx/${depositInfo.txHash}`)
+        console.log('From        :', `https://${getCurrentNetworkName()}etherscan.io/address/${depositInfo.from}`)
+        console.log('Transaction :', `https://${getCurrentNetworkName()}etherscan.io/tx/${depositInfo.txHash}`)
         console.log('Commitment  :', depositInfo.commitment)
         if (deposit.isSpent) {
           console.log('The note was not spent')
@@ -789,8 +642,8 @@ async function main() {
         console.log('Withdrawal  :', withdrawInfo.amount, currency)
         console.log('Relayer Fee :', withdrawInfo.fee, currency)
         console.log('Date        :', withdrawalDate.toLocaleDateString(), withdrawalDate.toLocaleTimeString())
-        console.log('To          :', `${getCurrentBlockExplorer(noteNetId, currency)}/address/${withdrawInfo.to}`)
-        console.log('Transaction :', `${getCurrentBlockExplorer(noteNetId, currency)}/tx/${withdrawInfo.txHash}`)
+        console.log('To          :', `https://${getCurrentNetworkName()}etherscan.io/address/${withdrawInfo.to}`)
+        console.log('Transaction :', `https://${getCurrentNetworkName()}etherscan.io/tx/${withdrawInfo.txHash}`)
         console.log('Nullifier   :', withdrawInfo.nullifier)
       })
     program
@@ -810,7 +663,7 @@ async function main() {
         amount = '100'
         await init({ rpc: program.rpc, currency, amount })
         noteString = await deposit({ currency, amount })
-        ; (parsedNote = parseNote(noteString))
+          ; (parsedNote = parseNote(noteString))
         await withdraw({ deposit: parsedNote.deposit, currency, amount, recipient: senderAccount, refund: '0.02', relayerURL: program.relayer })
       })
     try {
