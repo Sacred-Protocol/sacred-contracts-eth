@@ -1,4 +1,6 @@
-pragma solidity 0.5.17;
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.6.0;
+pragma experimental ABIEncoderV2;
 
 import "./Sacred.sol";
 
@@ -55,15 +57,15 @@ contract ETHSacred is Sacred {
     owner = msg.sender;
   }
 
-  function _processDeposit() internal {
+  function _processDeposit() internal override {
     require(msg.value == denomination, "Please send `mixDenomination` ETH along with transaction");
     address lendingPool = AddressesProvider(lendingPoolAddressProvider).getPool();
-    WETHGateway(wETHGateway).depositETH.value(denomination)(lendingPool, address(this), 0);
+    WETHGateway(wETHGateway).depositETH{value:denomination}(lendingPool, address(this), 0);
     collateralAmount += denomination;
     collectAaveInterests();
   }
 
-  function _processWithdraw(address payable _recipient, address payable _relayer, uint256 _fee, uint256 _refund) internal {
+  function _processWithdraw(address payable _recipient, address payable _relayer, uint256 _fee, uint256 _refund) internal override {
     // sanity checks
     require(msg.value == 0, "Message value is supposed to be zero for ETH instance");
     require(_refund == 0, "Refund value is supposed to be zero for ETH instance");

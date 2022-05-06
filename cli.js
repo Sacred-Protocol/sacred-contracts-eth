@@ -6,11 +6,10 @@ require('dotenv').config()
 const fs = require('fs')
 const axios = require('axios')
 const assert = require('assert')
-const snarkjs = require('snarkjs')
+const { bigInt } = require('snarkjs')
 const crypto = require('crypto')
 const circomlib = require('circomlib')
-const bigInt = snarkjs.bigInt
-const merkleTree = require('./lib/MerkleTree')
+const MerkleTree = require('fixed-merkle-tree')
 const Web3 = require('web3')
 const buildGroth16 = require('websnark/src/groth16')
 const websnarkUtils = require('websnark/src/utils')
@@ -25,11 +24,23 @@ let MERKLE_TREE_HEIGHT, ETH_AMOUNT, TOKEN_AMOUNT, PRIVATE_KEY
 const inBrowser = (typeof window !== 'undefined')
 let isLocalRPC = false
 
-/** Generate random number of specified byte length */
-const rbigint = nbytes => snarkjs.bigInt.leBuff2int(crypto.randomBytes(nbytes))
-
 /** Compute pedersen hash */
-const pedersenHash = data => circomlib.babyJub.unpackPoint(circomlib.pedersenHash.hash(data))[0]
+const pedersenHash = data => toBN(circomlib.babyJub.unpackPoint(circomlib.pedersenHash.hash(data))[0].toString())
+
+const poseidonHash = (items) => toBN(circomlib.poseidon(items).toString())
+
+const poseidonHash2 = (a, b) => poseidonHash([a, b])
+
+/** Generate random number of specified byte length */
+const randomBN = (nbytes = 31) => toBN(bigInt.leBuff2int(crypto.randomBytes(nbytes)).toString())
+
+function bitsToNumber(bits) {
+  let result = 0
+  for (const item of bits.slice().reverse()) {
+    result = (result << 1) + item
+  }
+  return result
+}
 
 /** BigNumber to hex string of specified length */
 function toHex(number, length = 32) {
@@ -54,10 +65,10 @@ async function printERC20Balance({ address, name, tokenAddress }) {
  */
 function createDeposit({ nullifier, secret }) {
   const deposit = { nullifier, secret }
-  deposit.preimage = Buffer.concat([deposit.nullifier.leInt2Buff(31), deposit.secret.leInt2Buff(31)])
+  deposit.preimage = Buffer.concat([deposit.nullifier.toBuffer('le', 31), deposit.secret.toBuffer('le', 31)])
   deposit.commitment = pedersenHash(deposit.preimage)
   deposit.commitmentHex = toHex(deposit.commitment)
-  deposit.nullifierHash = pedersenHash(deposit.nullifier.leInt2Buff(31))
+  deposit.nullifierHash = pedersenHash(deposit.nullifier.toBuffer('le', 31))
   deposit.nullifierHex = toHex(deposit.nullifierHash)
   return deposit
 }
@@ -68,7 +79,7 @@ function createDeposit({ nullifier, secret }) {
  * @param amount Deposit amount
  */
 async function deposit({ currency, amount }) {
-  const deposit = createDeposit({ nullifier: rbigint(31), secret: rbigint(31) })
+  const deposit = createDeposit({ nullifier: randomBN(31), secret: randomBN(31) })
   const note = toHex(deposit.preimage, 62)
   const noteString = `sacred-${currency}-${amount}-${netId}-${note}`
   console.log(`Your note: ${noteString}`)
@@ -143,16 +154,14 @@ async function generateMerkleProof(deposit) {
    * let's use "28858152" starting block number
    */
   const events = await getPastEvents(0, latestBlockNumber, []);
-  console.log(events.length);
   const leaves = events
     .sort((a, b) => a.returnValues.leafIndex - b.returnValues.leafIndex) // Sort events in chronological order
     .map(e => e.returnValues.commitment)
-  const tree = new merkleTree(MERKLE_TREE_HEIGHT, leaves)
+  const tree = new MerkleTree(MERKLE_TREE_HEIGHT, leaves, { hashFunction: poseidonHash2 })
 
   // Find current commitment in the tree
   const depositEvent = events.find(e => e.returnValues.commitment === toHex(deposit.commitment))
   const leafIndex = depositEvent ? depositEvent.returnValues.leafIndex : -1
-
   // Validate that our data is correct
   const root = await tree.root()
   const isValidRoot = await sacred.methods.isKnownRoot(toHex(root)).call()
@@ -160,9 +169,13 @@ async function generateMerkleProof(deposit) {
   assert(isValidRoot === true, 'Merkle tree is corrupted')
   assert(isSpent === false, 'The note is already spent')
   assert(leafIndex >= 0, 'The deposit is not found in the tree')
-
+  const path = tree.path(leafIndex) 
   // Compute merkle proof of our commitment
-  return tree.path(leafIndex)
+  return {
+    root: tree.root(),
+    path_elements: path.pathElements,
+    path_index: bitsToNumber(path.pathIndices)
+  }
 }
 
 /**
@@ -176,16 +189,15 @@ async function generateMerkleProof(deposit) {
 async function generateProof({ deposit, recipient, relayerAddress = 0, fee = 0, refund = 0 }) {
   // Compute merkle proof of our commitment
   const { root, path_elements, path_index } = await generateMerkleProof(deposit)
-
   // Prepare circuit input
   const input = {
     // Public snark inputs
     root: root,
     nullifierHash: deposit.nullifierHash,
-    recipient: bigInt(recipient),
-    relayer: bigInt(relayerAddress),
-    fee: bigInt(fee),
-    refund: bigInt(refund),
+    recipient: toBN(recipient),
+    relayer: toBN(relayerAddress),
+    fee: fee,
+    refund: refund,
 
     // Private snark inputs
     nullifier: deposit.nullifier,
@@ -258,7 +270,6 @@ async function withdraw({ deposit, currency, amount, recipient, relayerURL, refu
     }
   } else { // using private key
     const { proof, args } = await generateProof({ deposit, recipient, refund })
-
     console.log('Submitting withdraw transaction')
     await sacred.methods.withdraw(proof, ...args).send({ from: senderAccount, value: refund.toString(), gas: 1e6 })
       .on('transactionHash', function (txHash) {
@@ -433,8 +444,8 @@ function parseNote(noteString) {
   }
 
   const buf = Buffer.from(match.groups.note, 'hex')
-  const nullifier = bigInt.leBuff2int(buf.slice(0, 31))
-  const secret = bigInt.leBuff2int(buf.slice(31, 62))
+  const nullifier = toBN(new BN(buf.slice(0, 31), 16, 'le'))
+  const secret = toBN(new BN(buf.slice(31, 62), 16, 'le'))
   const deposit = createDeposit({ nullifier, secret })
   const netId = Number(match.groups.netId)
 
