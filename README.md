@@ -31,16 +31,6 @@ To deploy other pool sizes, change the ETH_AMOUNT parameter.
 
 Update contract addresses in `config.js`
 ```bash
-$ ./cli.js sacredtest eth 0.1 <RECIPIENT ADDR> --rpc <RPC URL>
+$ ./cli.js sacredtest eth 0.1 <CHAIN ID> <RECIPIENT ADDR> --rpc <RPC URL>
 ```
 
-### Cache
-
-Cache Events
-```bash
-$ node ./cli.js cache <EVENT_TYPE> <NET_ID> <CURRENCY> <AMOUNT> --rpc <RPC URL>
-```
-
-## Contract guidance
-
-TBA.
