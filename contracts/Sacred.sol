@@ -1,13 +1,15 @@
-pragma solidity 0.5.17;
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.6.0;
+pragma experimental ABIEncoderV2;
 
 import "./MerkleTreeWithHistory.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-contract IVerifier {
-  function verifyProof(bytes memory _proof, uint256[6] memory _input) public returns(bool);
+interface IVerifier {
+  function verifyProof(bytes memory _proof, uint256[6] memory _input) external returns(bool);
 }
 
-contract Sacred is MerkleTreeWithHistory, ReentrancyGuard {
+abstract contract Sacred is MerkleTreeWithHistory, ReentrancyGuard {
   uint256 public denomination;
   mapping(bytes32 => bool) public nullifierHashes;
   // we store all commitments just to prevent accidental deposits with the same commitment
@@ -71,7 +73,7 @@ contract Sacred is MerkleTreeWithHistory, ReentrancyGuard {
   }
 
   /** @dev this function is defined in a child contract */
-  function _processDeposit() internal;
+  function _processDeposit() internal virtual;
 
   /**
     @dev Withdraw a deposit from the contract. `proof` is a zkSNARK proof data, and input is an array of circuit public inputs
@@ -93,7 +95,7 @@ contract Sacred is MerkleTreeWithHistory, ReentrancyGuard {
   }
 
   /** @dev this function is defined in a child contract */
-  function _processWithdraw(address payable _recipient, address payable _relayer, uint256 _fee, uint256 _refund) internal;
+  function _processWithdraw(address payable _recipient, address payable _relayer, uint256 _fee, uint256 _refund) internal virtual;
 
   /** @dev whether a note is already spent */
   function isSpent(bytes32 _nullifierHash) public view returns(bool) {

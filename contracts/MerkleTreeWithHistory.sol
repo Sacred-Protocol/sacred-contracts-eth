@@ -1,12 +1,14 @@
-pragma solidity 0.5.17;
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.6.0;
+pragma experimental ABIEncoderV2;
 
 library Hasher {
-  function MiMCSponge(uint256 in_xL, uint256 in_xR) public pure returns (uint256 xL, uint256 xR);
+  function poseidon(bytes32[2] memory input) public pure returns (bytes32){}
 }
 
 contract MerkleTreeWithHistory {
   uint256 public constant FIELD_SIZE = 21888242871839275222246405745257275088548364400416034343698204186575808495617;
-  uint256 public constant ZERO_VALUE = 18057714445064126197463363025270544038935021370379666668119966501302555028628; // = keccak256("sacred") % FIELD_SIZE
+  uint256 public constant ZERO_VALUE = 21663839004416932945382355908790599225266501822907911457504978515578255421292; // = keccak256("sacred") % FIELD_SIZE
 
   uint32 public levels;
 
@@ -43,12 +45,7 @@ contract MerkleTreeWithHistory {
   function hashLeftRight(bytes32 _left, bytes32 _right) public pure returns (bytes32) {
     require(uint256(_left) < FIELD_SIZE, "_left should be inside the field");
     require(uint256(_right) < FIELD_SIZE, "_right should be inside the field");
-    uint256 R = uint256(_left);
-    uint256 C = 0;
-    (R, C) = Hasher.MiMCSponge(R, C);
-    R = addmod(R, uint256(_right), FIELD_SIZE);
-    (R, C) = Hasher.MiMCSponge(R, C);
-    return bytes32(R);
+    return Hasher.poseidon([_left, _right]);
   }
 
   function _insert(bytes32 _leaf) internal returns(uint32 index) {
