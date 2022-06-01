@@ -8,7 +8,7 @@ This is a variant of Tornado cash compatible with the [Aave protocol](https://aa
 
 ### Dependencies
 
-1. node 12
+1. node 14
 2. yarn
 3. zkutil (`brew install rust && cargo install zkutil`)
 
