@@ -4,36 +4,32 @@
 
 require('dotenv').config()
 const fs = require('fs')
+const {toBigIntLE} = require('bigint-buffer')
 const axios = require('axios')
 const assert = require('assert')
-const { bigInt } = require('snarkjs')
 const crypto = require('crypto')
-const circomlib = require('circomlib')
+const { groth16 } = require('snarkjs')
+const circomlib = require('circomlibjs')
 const MerkleTree = require('fixed-merkle-tree')
 const Web3 = require('web3')
-const buildGroth16 = require('websnark/src/groth16')
-const websnarkUtils = require('websnark/src/utils')
 const { toWei, fromWei, toBN, BN } = require('web3-utils')
 const config = require('./config')
 const program = require('commander')
 
-let web3, sacred, circuit, proving_key, groth16, erc20, senderAccount, netId
+let web3, sacred, erc20, senderAccount, netId
 let MERKLE_TREE_HEIGHT, ETH_AMOUNT, TOKEN_AMOUNT, PRIVATE_KEY
 
 /** Whether we are in a browser or node.js */
 const inBrowser = (typeof window !== 'undefined')
 let isLocalRPC = false
-
+let babyJub, pedersen, poseidon
 /** Compute pedersen hash */
-const pedersenHash = data => toBN(circomlib.babyJub.unpackPoint(circomlib.pedersenHash.hash(data))[0].toString())
-
-const poseidonHash = (items) => toBN(circomlib.poseidon(items).toString())
-
+const pedersenHash = data => toBN(babyJub.F.toString(babyJub.unpackPoint(pedersen.hash(data))[0]))
+const poseidonHash = (items) => toBN(poseidon.F.toString(poseidon(items)))
 const poseidonHash2 = (a, b) => poseidonHash([a, b])
 
 /** Generate random number of specified byte length */
-const randomBN = (nbytes = 31) => toBN(bigInt.leBuff2int(crypto.randomBytes(nbytes)).toString())
-
+const randomBN = (nbytes = 31) => toBN(toBigIntLE(crypto.randomBytes(nbytes)).toString())
 function bitsToNumber(bits) {
   let result = 0
   for (const item of bits.slice().reverse()) {
@@ -42,9 +38,41 @@ function bitsToNumber(bits) {
   return result
 }
 
+function unstringifyBigInts(o) {
+  if ((typeof(o) == "string") && (/^[0-9]+$/.test(o) ))  {
+      return BigInt(o);
+  } else if ((typeof(o) == "string") && (/^0x[0-9a-fA-F]+$/.test(o) ))  {
+      return BigInt(o);
+  } else if (Array.isArray(o)) {
+      return o.map(unstringifyBigInts);
+  } else if (typeof o == "object") {
+      if (o===null) return null;
+      const res = {};
+      const keys = Object.keys(o);
+      keys.forEach( (k) => {
+          res[k] = unstringifyBigInts(o[k]);
+      });
+      return res;
+  } else {
+      return o;
+  }
+}
+
+async function generateGroth16Proof(input, wasmFile, zkeyFileName) {
+  const { proof: _proof, publicSignals: _publicSignals } = await groth16.fullProve(input, wasmFile, zkeyFileName);
+  const editedPublicSignals = unstringifyBigInts(_publicSignals);
+  const editedProof = unstringifyBigInts(_proof);
+  const calldata = await groth16.exportSolidityCallData(editedProof, editedPublicSignals);
+  const argv = calldata.replace(/["[\]\s]/g, "").split(',').map(x => BigInt(x).toString());
+  const a = [argv[0], argv[1]];
+  const b = [[argv[2], argv[3]], [argv[4], argv[5]]];
+  const c = [argv[6], argv[7]];
+  return {a, b, c}
+}
+
 /** BigNumber to hex string of specified length */
 function toHex(number, length = 32) {
-  const str = number instanceof Buffer ? number.toString('hex') : bigInt(number).toString(16)
+  const str = number instanceof Buffer ? number.toString('hex') : BigInt(number).toString(16)
   return '0x' + str.padStart(length * 2, '0')
 }
 
@@ -189,39 +217,36 @@ async function generateMerkleProof(deposit) {
 async function generateProof({ deposit, recipient, relayerAddress = 0, fee = 0, refund = 0 }) {
   // Compute merkle proof of our commitment
   const { root, path_elements, path_index } = await generateMerkleProof(deposit)
+  const pathElements = path_elements.map(item => toHex(item))
   // Prepare circuit input
   const input = {
     // Public snark inputs
-    root: root,
-    nullifierHash: deposit.nullifierHash,
-    recipient: toBN(recipient),
-    relayer: toBN(relayerAddress),
-    fee: fee,
-    refund: refund,
+    root: toHex(root),
+    nullifierHash: toHex(deposit.nullifierHash),
+    recipient: toHex(toBN(recipient)),
+    relayer: toHex(toBN(relayerAddress)),
+    fee: toHex(fee),
+    refund: toHex(refund),
 
     // Private snark inputs
-    nullifier: deposit.nullifier,
-    secret: deposit.secret,
-    pathElements: path_elements,
+    nullifier: toHex(deposit.nullifier),
+    secret: toHex(deposit.secret),
+    pathElements: pathElements,
     pathIndices: path_index,
   }
 
   console.log('Generating SNARK proof')
-  console.time('Proof time')
-  const proofData = await websnarkUtils.genWitnessAndProve(groth16, input, circuit, proving_key)
-  const { proof } = websnarkUtils.toSolidityInput(proofData)
-  console.timeEnd('Proof time')
-
+  const {a, b, c} = await generateGroth16Proof(input, "build/circuits/withdraw_js/withdraw.wasm", "build/circuits/withdraw_0001.zkey");
   const args = [
-    toHex(input.root),
-    toHex(input.nullifierHash),
+    input.root,
+    input.nullifierHash,
     toHex(input.recipient, 20),
     toHex(input.relayer, 20),
-    toHex(input.fee),
-    toHex(input.refund)
+    input.fee,
+    input.refund
   ]
-
-  return { proof, args }
+  console.time('Proof time')
+  return { a, b, c, args }
 }
 
 /**
@@ -248,11 +273,11 @@ async function withdraw({ deposit, currency, amount, recipient, relayerURL, refu
     if (fee.gt(fromDecimals({ amount, decimals }))) {
       throw new Error('Too high refund')
     }
-    const { proof, args } = await generateProof({ deposit, recipient, relayerAddress, fee, refund })
+    const { a, b, c, args } = await generateProof({ deposit, recipient, relayerAddress, fee, refund })
 
     console.log('Sending withdraw transaction through relay')
     try {
-      const relay = await axios.post(relayerURL + '/relay', { contract: sacred._address, proof, args })
+      const relay = await axios.post(relayerURL + '/relay', { contract: sacred._address, a, b, c, args })
       if (netId === 1 || netId === 42) {
         console.log(`Transaction submitted through the relay. View transaction on etherscan https://${getCurrentNetworkName()}etherscan.io/tx/${relay.data.txHash}`)
       } else {
@@ -269,9 +294,9 @@ async function withdraw({ deposit, currency, amount, recipient, relayerURL, refu
       }
     }
   } else { // using private key
-    const { proof, args } = await generateProof({ deposit, recipient, refund })
+    const { a, b, c, args } = await generateProof({ deposit, recipient, refund })
     console.log('Submitting withdraw transaction')
-    await sacred.methods.withdraw(proof, ...args).send({ from: senderAccount, value: refund.toString(), gas: 1e6 })
+    await sacred.methods.withdraw(a, b, c, ...args).send({ from: senderAccount, value: refund.toString(), gas: 1e6 })
       .on('transactionHash', function (txHash) {
         if (netId === 1 || netId === 42) {
           console.log(`View transaction on etherscan https://${getCurrentNetworkName()}etherscan.io/tx/${txHash}`)
@@ -444,8 +469,8 @@ function parseNote(noteString) {
   }
 
   const buf = Buffer.from(match.groups.note, 'hex')
-  const nullifier = toBN(new BN(buf.slice(0, 31), 16, 'le'))
-  const secret = toBN(new BN(buf.slice(31, 62), 16, 'le'))
+  const nullifier = toBN(toBigIntLE(buf.slice(0, 31)).toString())
+  const secret = toBN(toBigIntLE(buf.slice(31, 62)).toString())
   const deposit = createDeposit({ nullifier, secret })
   const netId = Number(match.groups.netId)
 
@@ -517,8 +542,6 @@ async function init({ rpc, noteNetId, currency = 'dai', amount = '100' }) {
     // To assemble web version run `npm run browserify`
     web3 = new Web3(window.web3.currentProvider, null, { transactionConfirmationBlocks: 1 })
     contractJson = await (await fetch('build/contracts/ETHSacred.json')).json()
-    circuit = await (await fetch('build/circuits/withdraw.json')).json()
-    proving_key = await (await fetch('build/circuits/withdraw_proving_key.bin')).arrayBuffer()
     MERKLE_TREE_HEIGHT = 20
     ETH_AMOUNT = 1e18
     TOKEN_AMOUNT = 1e19
@@ -527,8 +550,6 @@ async function init({ rpc, noteNetId, currency = 'dai', amount = '100' }) {
     // Initialize from local node
     web3 = new Web3(rpc, null, { transactionConfirmationBlocks: 1 })
     contractJson = require('./build/contracts/ETHSacred.json')
-    circuit = require('./build/circuits/withdraw.json')
-    proving_key = fs.readFileSync('build/circuits/withdraw_proving_key.bin').buffer
     MERKLE_TREE_HEIGHT = process.env.MERKLE_TREE_HEIGHT || 20
     ETH_AMOUNT = process.env.ETH_AMOUNT
     TOKEN_AMOUNT = process.env.TOKEN_AMOUNT
@@ -544,8 +565,6 @@ async function init({ rpc, noteNetId, currency = 'dai', amount = '100' }) {
     erc20ContractJson = require('./build/contracts/ERC20Mock.json')
     erc20sacredJson = require('./build/contracts/ERC20Sacred.json')
   }
-  // groth16 initialises a lot of Promises that will never be resolved, that's why we need to use process.exit to terminate the CLI
-  groth16 = await buildGroth16()
   netId = await web3.eth.net.getId()
   if (noteNetId && Number(noteNetId) !== netId) {
     throw new Error('This note is for a different network. Specify the --rpc option explicitly')
@@ -573,6 +592,9 @@ async function init({ rpc, noteNetId, currency = 'dai', amount = '100' }) {
 }
 
 async function main() {
+  babyJub = await circomlib.buildBabyjub()
+  pedersen = await circomlib.buildPedersenHash();
+  poseidon = await circomlib.buildPoseidon();
   if (inBrowser) {
     const instance = { currency: 'eth', amount: '0.1' }
     await init(instance)
