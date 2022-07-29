@@ -1,12 +1,10 @@
 #!/usr/bin/env node
 // Temporary demo client
-// Works both in browser and node.js
+// Works in node.js
 
 require('dotenv').config()
 const utils = require('./lib/utils')
 const program = require('commander')
-const ethSacredAbi = require('./artifacts/contracts/ETHSacred.sol/ETHSacred.json')
-const erc20SacredAbi = require('./artifacts/contracts/ERC20Sacred.sol/ERC20Sacred.json')
 const erc20Abi = require('./artifacts/contracts/ERC20Sacred.sol/ERC20Sacred.json')
 const config = require('./config.json')
 const withdrawCircuit = require('./build/circuits/withdraw.json')
@@ -16,17 +14,20 @@ const withdrawProvidingKeyFilePath = 'build/circuits/withdraw_proving_key.bin'
 
 async function main() {
   program
-    .option('-r, --rpc <URL>', 'The RPC, CLI should interact with', 'http://localhost:8545')
+    .option('-r, --rpc <URL>', 'The RPC, CLI should interact with', '')
     .option('-R, --relayer <URL>', 'Withdraw via relayer')
   program
     .command('deposit <currency> <amount>')
     .description('Submit a deposit of specified currency and amount from default eth account and return the resulting note. The currency is one of (ETH|). The amount depends on currency, see config.js file.')
     .action(async (currency, amount) => {
-      await utils.init({instancesInfo: config, erc20Contract: erc20Abi.abi, rpc:program.rpc || RPC_URL})
+      await utils.init({instancesInfo: config, erc20Contract: erc20Abi.abi, rpc: program.rpc || RPC_URL})
       currency = currency.toLowerCase()
-      const instanceAddress = utils.getSacredInstanceAddress(utils.getNetId(), currency, amount)
-      let sacredInstance = new ethers.Contract(instanceAddress, currency === "eth" ? ethSacredAbi.abi : erc20SacredAbi.abi, utils.getWalllet())
-      await utils.setup({sacredInstanceContract: sacredInstance, withdrawCircuit, withdrawProvidingKeyFilePath});
+      await utils.setup({
+        ethSacredAbiPath:"../artifacts/contracts/ETHSacred.sol", 
+        erc20SacredAbiPath:"../artifacts/contracts/ERC20Sacred.sol", 
+        withdrawCircuit, 
+        withdrawProvidingKeyFilePath
+      });
       await utils.deposit({currency, amount});
     })
   program
@@ -35,24 +36,30 @@ async function main() {
     .action(async (noteString, recipient, refund) => {
       await utils.init({instancesInfo: config, erc20Contract: erc20Abi.abi, rpc:program.rpc || RPC_URL})
       const { currency, amount, netId, deposit } = utils.baseUtils.parseNote(noteString)
-      if(netId == utils.getNetId) {
-        const instanceAddress = utils.getSacredInstanceAddress(netId, currency, amount)
-        let sacredInstance = new ethers.Contract(instanceAddress, currency === "eth" ? ethSacredAbi.abi : erc20SacredAbi.abi, utils.getWalllet())
-        await utils.setup({sacredInstanceContract: sacredInstance, withdrawCircuit, withdrawProvidingKeyFilePath});
+      if(netId == utils.getNetId()) {
+        await utils.setup({
+          ethSacredAbiPath:"../artifacts/contracts/ETHSacred.sol", 
+          erc20SacredAbiPath:"../artifacts/contracts/ERC20Sacred.sol", 
+          withdrawCircuit, 
+          withdrawProvidingKeyFilePath
+        });
         await utils.withdraw({deposit, currency, amount, recipient, relayerURL: program.relayer, refund });
       } else {
         console.log("netId of the note doesn't match with RPC!")
       }
     })
   program
-    .command('sacredtest <currency> <amount> <netId> <recipient>')
+    .command('sacredtest <currency> <amount> <recipient>')
     .description('Perform an automated test. It deposits and withdraws one ETH. Uses Kovan Testnet.')
     .action(async (currency, amount, recipient) => {
       await utils.init({instancesInfo: config, erc20Contract: erc20Abi.abi, rpc:program.rpc || RPC_URL})
       currency = currency.toLowerCase()
-      const instanceAddress = utils.getSacredInstanceAddress(utils.getNetId(), currency, amount)
-      let sacredInstance = new ethers.Contract(instanceAddress, currency === "eth" ? ethSacredAbi.abi : erc20SacredAbi.abi, utils.getWalllet())
-      await utils.setup({sacredInstanceContract: sacredInstance, withdrawCircuit, withdrawProvidingKeyFilePath});
+      await utils.setup({
+        ethSacredAbiPath:"../artifacts/contracts/ETHSacred.sol", 
+        erc20SacredAbiPath:"../artifacts/contracts/ERC20Sacred.sol", 
+        withdrawCircuit, 
+        withdrawProvidingKeyFilePath
+      });
       const { noteString, } = await utils.deposit({currency, amount});
       const { netId, deposit } = utils.parseNote(noteString)
       if(netId == utils.getNetId()) {
@@ -78,9 +85,12 @@ async function main() {
     .action(async (noteString) => {
       await utils.init({instancesInfo: config, erc20Contract: erc20Abi.abi, rpc:program.rpc || RPC_URL})
       const { currency, amount, netId, deposit } = utils.baseUtils.parseNote(noteString)
-      const instanceAddress = utils.getSacredInstanceAddress(utils.getNetId(), currency, amount)
-      let sacredInstance = new ethers.Contract(instanceAddress, currency === "eth" ? ethSacredAbi.abi : erc20SacredAbi.abi, utils.getWalllet())
-      await utils.setup({sacredInstanceContract: sacredInstance, withdrawCircuit, withdrawProvidingKeyFilePath});
+      await utils.setup({
+        ethSacredAbiPath:"../artifacts/contracts/ETHSacred.sol", 
+        erc20SacredAbiPath:"../artifacts/contracts/ERC20Sacred.sol", 
+        withdrawCircuit, 
+        withdrawProvidingKeyFilePath
+      });
       const depositInfo = await utils.loadDepositData({ deposit })
       const depositDate = new Date(depositInfo.timestamp * 1000)
       console.log('\n=============Deposit=================')
