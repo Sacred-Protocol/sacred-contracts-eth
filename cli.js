@@ -22,7 +22,7 @@ async function main() {
     .command('deposit <currency> <amount>')
     .description('Submit a deposit of specified currency and amount from default eth account and return the resulting note. The currency is one of (ETH|). The amount depends on currency, see config.js file.')
     .action(async (currency, amount) => {
-      utils.init({config, erc20Contract: erc20Abi.abi, rpc:program.rpc || RPC_URL})
+      await utils.init({config, erc20Contract: erc20Abi.abi, rpc:program.rpc || RPC_URL})
       currency = currency.toLowerCase()
       const instanceAddress = utils.getSacredInstanceAddress(utils.netId, currency, amount)
       let sacredInstance = new ethers.Contract(instanceAddress, currency === "eth" ? ethSacredAbi.abi : erc20SacredAbi.abi, utils.wallet)
@@ -33,7 +33,7 @@ async function main() {
     .command('withdraw <note> <recipient> [ETH_purchase]')
     .description('Withdraw a note to a recipient account using relayer or specified private key. You can exchange some of your deposit`s tokens to ETH during the withdrawal by specifing ETH_purchase (e.g. 0.01) to pay for gas in future transactions. Also see the --relayer option.')
     .action(async (noteString, recipient, refund) => {
-      utils.init({config, erc20Contract: erc20Abi.abi, rpc:program.rpc || RPC_URL})
+      await utils.init({config, erc20Contract: erc20Abi.abi, rpc:program.rpc || RPC_URL})
       const { currency, amount, netId, deposit } = utils.baseUtils.parseNote(noteString)
       if(netId == utils.netId) {
         const instanceAddress = utils.getSacredInstanceAddress(netId, currency, amount)
@@ -48,7 +48,7 @@ async function main() {
     .command('sacredtest <currency> <amount> <netId> <recipient>')
     .description('Perform an automated test. It deposits and withdraws one ETH. Uses Kovan Testnet.')
     .action(async (currency, amount, recipient) => {
-      utils.init({config, erc20Contract: erc20Abi.abi, rpc:program.rpc || RPC_URL})
+      await utils.init({config, erc20Contract: erc20Abi.abi, rpc:program.rpc || RPC_URL})
       currency = currency.toLowerCase()
       const instanceAddress = utils.getSacredInstanceAddress(utils.netId, currency, amount)
       let sacredInstance = new ethers.Contract(instanceAddress, currency === "eth" ? ethSacredAbi.abi : erc20SacredAbi.abi, utils.wallet)
@@ -66,7 +66,7 @@ async function main() {
     .command('balance <address> [token_address]')
     .description('Check ETH and ERC20 balance')
     .action(async (address, tokenAddress) => {
-      utils.init({config, erc20Contract: erc20Abi.abi, rpc:program.rpc || RPC_URL})
+      await utils.init({config, erc20Contract: erc20Abi.abi, rpc:program.rpc || RPC_URL})
       await utils.printETHBalance({ address, name: '' })
       if (tokenAddress) {
         await utils.printERC20Balance({ address, name: '', tokenAddress })
@@ -76,7 +76,7 @@ async function main() {
     .command('compliance <note>')
     .description('Shows the deposit and withdrawal of the provided note. This might be necessary to show the origin of assets held in your withdrawal address.')
     .action(async (noteString) => {
-      utils.init({config, erc20Contract: erc20Abi.abi, rpc:program.rpc || RPC_URL})
+      await utils.init({config, erc20Contract: erc20Abi.abi, rpc:program.rpc || RPC_URL})
       const { currency, amount, netId, deposit } = utils.baseUtils.parseNote(noteString)
       const instanceAddress = utils.getSacredInstanceAddress(utils.netId, currency, amount)
       let sacredInstance = new ethers.Contract(instanceAddress, currency === "eth" ? ethSacredAbi.abi : erc20SacredAbi.abi, utils.wallet)
