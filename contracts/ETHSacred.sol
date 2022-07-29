@@ -89,7 +89,7 @@ contract ETHSacred is Sacred {
     aaveInterestsProxy = _aaveInterestsProxy;
   }
 
-  function collectAaveInterests() public payable {
+  function collectAaveInterests() private payable {
     uint256 interests = AToken(wETHToken).balanceOf(address(this)) - collateralAmount;
     if(interests > 0 && aaveInterestsProxy != address(0)) {
       address lendingPool = AddressesProvider(lendingPoolAddressProvider).getPool();

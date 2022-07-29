@@ -29,7 +29,7 @@ contract MerkleTreeWithHistory {
     zeros.push(currentZero);
     filledSubtrees.push(currentZero);
 
-    for (uint32 i = 1; i < levels; i++) {
+    for (uint32 i = 1; i < levels; ++i) {
       currentZero = hashLeftRight(currentZero, currentZero);
       zeros.push(currentZero);
       filledSubtrees.push(currentZero);
@@ -55,7 +55,7 @@ contract MerkleTreeWithHistory {
     bytes32 left;
     bytes32 right;
 
-    for (uint32 i = 0; i < levels; i++) {
+    for (uint32 i = 0; i < levels; ++i) {
       if (currentIndex % 2 == 0) {
         left = currentLevelHash;
         right = zeros[i];

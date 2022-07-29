@@ -104,7 +104,7 @@ abstract contract Sacred is MerkleTreeWithHistory, ReentrancyGuard {
   /** @dev whether an array of notes is already spent */
   function isSpentArray(bytes32[] calldata _nullifierHashes) external view returns(bool[] memory spent) {
     spent = new bool[](_nullifierHashes.length);
-    for(uint i = 0; i < _nullifierHashes.length; i++) {
+    for(uint i = 0; i < _nullifierHashes.length; ++i) {
       if (isSpent(_nullifierHashes[i])) {
         spent[i] = true;
       }
