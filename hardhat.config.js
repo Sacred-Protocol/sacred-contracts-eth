@@ -36,9 +36,6 @@ const config = {
     },
   },
   networks: {
-    hardhat: {
-      blockGasLimit: 9500000,
-    },
   },
   mocha: {
     timeout: 600000,
@@ -46,9 +43,19 @@ const config = {
 }
 
 if (process.env.NETWORK) {
-  config.networks[process.env.NETWORK] = {
-    url: process.env.RPC_URL,
-    accounts: [process.env.PRIVATE_KEY],
+  if(process.env.NETWORK !== "hardhat") {
+    config.networks[process.env.NETWORK] = {
+      url: process.env.RPC_URL,
+      accounts: [process.env.PRIVATE_KEY],
+    }
+  } else {
+    config.networks["hardhat"] = {
+      forking: {
+        url: process.env.RPC_URL,
+        timeout: 120000000000,
+      },
+      blockGasLimit: 30000000,
+    }
   }
 }
 module.exports = config

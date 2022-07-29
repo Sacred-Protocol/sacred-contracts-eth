@@ -1,42 +1,22 @@
 require("dotenv").config();
-const test = require('./clitest');
 const { expect } = require('chai');
 const { waffle } = require("hardhat");
+const utils = require('../lib/utils')
+const erc20Abi = require('../artifacts/contracts/ERC20Sacred.sol/ERC20Sacred.json')
+const config = require('../config.json')
 
-describe('Test Deposit, Withdraw', () => {
-  let owner;
-  let operator;
-  let contractAddress;
-  let sacred;
+const withdrawCircuit = require('../build/circuits/withdraw.json')
+const { RPC_URL } = process.env
+const withdrawProvidingKeyFilePath = 'build/circuits/withdraw_proving_key.bin'
+let owner;
+
+describe('Test Sacred Contracts', () => {
   // Deploy and setup the contracts
   before(async () => {
-    const { MERKLE_TREE_HEIGHT, ETH_AMOUNT, LENDING_POOL_ADDRESS_PROVIDER, WETH_GATEWAY, WETH_TOKEN } = process.env
-
     // get the signers
     const signers = await ethers.getSigners();
     owner = signers[0];
-    operator = signers[1];
-    const Verifier = await ethers.getContractFactory('Verifier');
-    const Hasher = await ethers.getContractFactory('Hasher');
-    const hasher = await (await Hasher.deploy()).deployed();
-
-    const ETHSacred = await ethers.getContractFactory(
-      "ETHSacred",
-      {
-        libraries: {
-          Hasher: hasher.address
-        }
-      }
-    );
-
-    const verifier = await (await Verifier.deploy()).deployed();
-    sacred = await (await ETHSacred
-      .deploy(verifier.address, ETH_AMOUNT, MERKLE_TREE_HEIGHT, LENDING_POOL_ADDRESS_PROVIDER, WETH_GATEWAY, WETH_TOKEN, operator.address, 50))
-      .deployed();
-    contractAddress = sacred.address
-    console.log('ETHSacred\'s address ', sacred.address)
-
-    await test.init({sender: owner.address, contractObj: sacred});
+    await utils.init({instancesInfo:config, erc20Contract: erc20Abi.abi, rpc: RPC_URL})
   });
 
   describe('Test Deposit, Withdraw', () => {
@@ -45,18 +25,22 @@ describe('Test Deposit, Withdraw', () => {
       let ethbalance = Number(ethers.utils.formatEther(await owner.getBalance()));
       console.log('User ETH balance is ', ethbalance);
 
-      ethbalance = Number(ethers.utils.formatEther(await operator.getBalance()));
-      console.log('Operator ETH balance is ', ethbalance);
-      for(let i = 0; i < 1; i++) {
-        const noteString = await test.deposit({currency:'eth', amount:0.1});
-        let data = test.parseNote(noteString);
-        await test.withdraw({ deposit: data.deposit, currency: data.currency, amount:data.amount, recipient: owner.address, relayerURL: null });
-      }
+      const currency = "eth"
+      const amount = 0.1
+      await utils.setup({
+        ethSacredAbiPath:"../artifacts/contracts/ETHSacred.sol", 
+        erc20SacredAbiPath:"../artifacts/contracts/ERC20Sacred.sol", 
+        withdrawCircuit, 
+        withdrawProvidingKeyFilePath
+      });
+      const { noteString, } = await utils.deposit({currency, amount});
+      const { netId, deposit } = utils.baseUtils.parseNote(noteString)
+      expect(""+netId).to.equal(utils.getNetId())
+      const refund = '0'
+      await utils.withdraw({deposit, currency, amount, recipient: owner.address, refund });
+
       ethbalance = Number(ethers.utils.formatEther(await owner.getBalance()));
       console.log('User ETH balance is ', ethbalance);
-
-      ethbalance = Number(ethers.utils.formatEther(await operator.getBalance()));
-      console.log('Operator ETH balance is ', ethbalance);
     });
     
     
