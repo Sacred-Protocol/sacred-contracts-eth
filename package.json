@@ -7,10 +7,10 @@
     "build:circuit": "mkdir -p build/circuits && scripts/buildCircuit.sh",
     "build:contract": "npx hardhat compile",
     "build:browserify": "npx browserify cli.js -o index.js --exclude worker_threads",
-    "build": "npm run build:circuit && npm run build:contract && npm run build:browserify",
+    "build": "npm run build:circuit && npm run build:contract",
     "browserify": "npm run build:browserify",
     "test": "npx hardhat test test/hardhatTest.js",
-    "deploy": "npx hardhat run scripts/deploy.js",
+    "deploy": "npx ./compileHasher.js && npx hardhat run scripts/deploy.js",
     "eslint": "npx eslint --ignore-path .gitignore .",
     "flat": "npx truffle-flattener contracts/ETHSacred.sol > ETHSacred_flat.sol && npx truffle-flattener contracts/ERC20Sacred.sol > ERC20Sacred_flat.sol",
     "download": "node downloadKeys.js"
