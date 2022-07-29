@@ -61,7 +61,7 @@ async function main() {
         withdrawProvidingKeyFilePath
       });
       const { noteString, } = await utils.deposit({currency, amount});
-      const { netId, deposit } = utils.parseNote(noteString)
+      const { netId, deposit } = utils.baseUtils.parseNote(noteString)
       if(netId == utils.getNetId()) {
         const refund = '0'
         await utils.withdraw({deposit, currency, amount, recipient, relayerURL: program.relayer, refund });
