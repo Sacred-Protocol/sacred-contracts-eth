@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.6.0;
-pragma experimental ABIEncoderV2;
+pragma solidity ^0.8.0;
 
 import "./MerkleTreeWithHistory.sol";
-import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 interface IVerifier {
   function verifyProof(bytes memory _proof, uint256[6] memory _input) external returns(bool);
@@ -41,7 +40,7 @@ abstract contract Sacred is MerkleTreeWithHistory, ReentrancyGuard {
     uint32 _merkleTreeHeight,
     address _operator,
     uint256 _fee
-  ) MerkleTreeWithHistory(_merkleTreeHeight) public {
+  ) MerkleTreeWithHistory(_merkleTreeHeight) {
     require(_denomination > 0, "denomination should be greater than 0");
     verifier = _verifier;
     operator = _operator;
