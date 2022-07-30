@@ -4,13 +4,16 @@
 
 require('dotenv').config()
 const utils = require('./lib/utils')
+const fs = require('fs')
 const program = require('commander')
 const erc20Abi = require('./artifacts/contracts/ERC20Sacred.sol/ERC20Sacred.json')
 const config = require('./config.json')
+const ethSacredAbi = require('./artifacts/contracts/ETHSacred.sol/ETHSacred.json')
+const erc20SacredAbi = require('./artifacts/contracts/ERC20Sacred.sol/ERC20Sacred.json')
 const withdrawCircuit = require('./build/circuits/withdraw.json')
+const withdrawProvidingKey = fs.readFileSync('./build/circuits/withdraw_proving_key.bin').buffer
 
 const { PRIVATE_KEY, RPC_URL } = process.env
-const withdrawProvidingKeyFilePath = 'build/circuits/withdraw_proving_key.bin'
 
 async function main() {
   program
@@ -23,10 +26,10 @@ async function main() {
       await utils.init({instancesInfo: config, erc20Contract: erc20Abi.abi, rpc: program.rpc || RPC_URL})
       currency = currency.toLowerCase()
       await utils.setup({
-        ethSacredAbiPath:"../artifacts/contracts/ETHSacred.sol", 
-        erc20SacredAbiPath:"../artifacts/contracts/ERC20Sacred.sol", 
+        ethSacredAbi: ethSacredAbi.abi, 
+        erc20SacredAbi: erc20SacredAbi.abi, 
         withdrawCircuit, 
-        withdrawProvidingKeyFilePath
+        withdrawProvidingKey
       });
       await utils.deposit({currency, amount});
     })
@@ -38,10 +41,10 @@ async function main() {
       const { currency, amount, netId, deposit } = utils.baseUtils.parseNote(noteString)
       if(netId == utils.getNetId()) {
         await utils.setup({
-          ethSacredAbiPath:"../artifacts/contracts/ETHSacred.sol", 
-          erc20SacredAbiPath:"../artifacts/contracts/ERC20Sacred.sol", 
+          ethSacredAbi: ethSacredAbi.abi, 
+          erc20SacredAbi: erc20SacredAbi.abi, 
           withdrawCircuit, 
-          withdrawProvidingKeyFilePath
+          withdrawProvidingKey
         });
         await utils.withdraw({deposit, currency, amount, recipient, relayerURL: program.relayer, refund });
       } else {
@@ -55,10 +58,10 @@ async function main() {
       await utils.init({instancesInfo: config, erc20Contract: erc20Abi.abi, rpc:program.rpc || RPC_URL})
       currency = currency.toLowerCase()
       await utils.setup({
-        ethSacredAbiPath:"../artifacts/contracts/ETHSacred.sol", 
-        erc20SacredAbiPath:"../artifacts/contracts/ERC20Sacred.sol", 
+        ethSacredAbi: ethSacredAbi.abi, 
+        erc20SacredAbi: erc20SacredAbi.abi, 
         withdrawCircuit, 
-        withdrawProvidingKeyFilePath
+        withdrawProvidingKey
       });
       const { noteString, } = await utils.deposit({currency, amount});
       const { netId, deposit } = utils.baseUtils.parseNote(noteString)
@@ -86,10 +89,10 @@ async function main() {
       await utils.init({instancesInfo: config, erc20Contract: erc20Abi.abi, rpc:program.rpc || RPC_URL})
       const { currency, amount, netId, deposit } = utils.baseUtils.parseNote(noteString)
       await utils.setup({
-        ethSacredAbiPath:"../artifacts/contracts/ETHSacred.sol", 
-        erc20SacredAbiPath:"../artifacts/contracts/ERC20Sacred.sol", 
+        ethSacredAbi: ethSacredAbi.abi, 
+        erc20SacredAbi: erc20SacredAbi.abi, 
         withdrawCircuit, 
-        withdrawProvidingKeyFilePath
+        withdrawProvidingKey
       });
       const depositInfo = await utils.loadDepositData({ deposit })
       const depositDate = new Date(depositInfo.timestamp * 1000)

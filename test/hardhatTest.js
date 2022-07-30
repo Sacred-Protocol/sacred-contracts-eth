@@ -1,13 +1,15 @@
 require("dotenv").config();
 const { expect } = require('chai');
-const { waffle } = require("hardhat");
+const fs = require('fs')
 const utils = require('../lib/utils')
 const erc20Abi = require('../artifacts/contracts/ERC20Sacred.sol/ERC20Sacred.json')
 const config = require('../config.json')
-
+const ethSacredAbi = require('../artifacts/contracts/ETHSacred.sol/ETHSacred.json')
+const erc20SacredAbi = require('../artifacts/contracts/ERC20Sacred.sol/ERC20Sacred.json')
 const withdrawCircuit = require('../build/circuits/withdraw.json')
+const withdrawProvidingKey = fs.readFileSync('./build/circuits/withdraw_proving_key.bin').buffer
+
 const { RPC_URL } = process.env
-const withdrawProvidingKeyFilePath = 'build/circuits/withdraw_proving_key.bin'
 let owner;
 
 describe('Test Sacred Contracts', () => {
@@ -28,10 +30,10 @@ describe('Test Sacred Contracts', () => {
       const currency = "eth"
       const amount = 0.1
       await utils.setup({
-        ethSacredAbiPath:"../artifacts/contracts/ETHSacred.sol", 
-        erc20SacredAbiPath:"../artifacts/contracts/ERC20Sacred.sol", 
+        ethSacredAbi: ethSacredAbi.abi, 
+        erc20SacredAbi: erc20SacredAbi.abi, 
         withdrawCircuit, 
-        withdrawProvidingKeyFilePath
+        withdrawProvidingKey
       });
       const { noteString, } = await utils.deposit({currency, amount});
       const { netId, deposit } = utils.baseUtils.parseNote(noteString)
@@ -42,29 +44,6 @@ describe('Test Sacred Contracts', () => {
       ethbalance = Number(ethers.utils.formatEther(await owner.getBalance()));
       console.log('User ETH balance is ', ethbalance);
     });
-    
-    
-  //   let noteStrings = []
-  //   it('Deposit', async () => {
-  //     let ethbalance = Number(ethers.utils.formatEther(await owner.getBalance()));
-  //     console.log('User ETH balance is ', ethbalance);
-  //     for(let i = 0; i < 10; i++) {
-  //       const noteString = await test.deposit({currency:'eth', amount:2});
-  //       noteStrings.push(noteString)
-  //     }
-  //     ethbalance = Number(ethers.utils.formatEther(await owner.getBalance()));
-  //     console.log('User ETH balance is ', ethbalance);
-  //   });
-
-  //   it('Withdraw', async () => {
-  //     for(let i = 0; i < 10; i++) {
-  //       let data = test.parseNote(noteStrings[i]);
-  //       await test.withdraw({ deposit: data.deposit, currency: data.currency, amount:data.amount, recipient: owner.address, relayerURL: null });
-  //     }
-  //     let ethbalance = Number(ethers.utils.formatEther(await owner.getBalance()));
-  //     console.log('User ETH balance is ', ethbalance);
-  // });
-
   });
 
 });
