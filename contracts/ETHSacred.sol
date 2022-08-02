@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.6.0;
-pragma experimental ABIEncoderV2;
+pragma solidity ^0.8.0;
 
 import "./Sacred.sol";
 
@@ -50,7 +49,7 @@ contract ETHSacred is Sacred {
     address _wETHToken,
     address _operator,
     uint256 _fee
-  ) Sacred(_verifier, _denomination, _merkleTreeHeight, _operator, _fee) public {
+  ) Sacred(_verifier, _denomination, _merkleTreeHeight, _operator, _fee) {
     lendingPoolAddressProvider = _lendingPoolAddressProvider;
     wETHGateway = _wETHGateway;
     wETHToken = _wETHToken;
@@ -90,7 +89,7 @@ contract ETHSacred is Sacred {
     aaveInterestsProxy = _aaveInterestsProxy;
   }
 
-  function collectAaveInterests() private payable {
+  function collectAaveInterests() private {
     uint256 interests = AToken(wETHToken).balanceOf(address(this)) - collateralAmount;
     if(interests > 0 && aaveInterestsProxy != address(0)) {
       address lendingPool = AddressesProvider(lendingPoolAddressProvider).getPool();

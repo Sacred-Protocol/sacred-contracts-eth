@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.6.0;
-pragma experimental ABIEncoderV2;
+pragma solidity ^0.8.0;
 
 import "./MerkleTreeWithHistory.sol";
-import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 interface IVerifier {
   function verifyProof(bytes memory _proof, uint256[6] memory _input) external returns(bool);
@@ -41,7 +40,7 @@ abstract contract Sacred is MerkleTreeWithHistory, ReentrancyGuard {
     uint32 _merkleTreeHeight,
     address _operator,
     uint256 _fee
-  ) MerkleTreeWithHistory(_merkleTreeHeight) public {
+  ) MerkleTreeWithHistory(_merkleTreeHeight) {
     require(_denomination > 0, "denomination should be greater than 0");
     verifier = _verifier;
     operator = _operator;
@@ -87,7 +86,7 @@ abstract contract Sacred is MerkleTreeWithHistory, ReentrancyGuard {
     require(_fee <= denomination, "Fee exceeds transfer value");
     require(!nullifierHashes[_nullifierHash], "The note has been already spent");
     require(isKnownRoot(_root), "Cannot find your merkle root"); // Make sure to use a recent one
-    require(verifier.verifyProof(_proof, [uint256(_root), uint256(_nullifierHash), uint256(_recipient), uint256(_relayer), _fee, _refund]), "Invalid withdraw proof");
+    require(verifier.verifyProof(_proof, [uint256(_root), uint256(_nullifierHash), uint256(uint160(address(_recipient))), uint256(uint160(address(_relayer))), _fee, _refund]), "Invalid withdraw proof");
 
     nullifierHashes[_nullifierHash] = true;
     _processWithdraw(_recipient, _relayer, _fee, _refund);

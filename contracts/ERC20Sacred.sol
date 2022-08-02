@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.6.0;
-pragma experimental ABIEncoderV2;
+pragma solidity ^0.8.0;
 
 import "./Sacred.sol";
 
@@ -14,7 +13,7 @@ contract ERC20Sacred is Sacred {
     address _operator,
     address _token,
     uint256 _fee
-  ) Sacred(_verifier, _denomination, _merkleTreeHeight, _operator, _fee) public {
+  ) Sacred(_verifier, _denomination, _merkleTreeHeight, _operator, _fee) {
     token = _token;
   }
 

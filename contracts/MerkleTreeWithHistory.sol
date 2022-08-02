@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.6.0;
-pragma experimental ABIEncoderV2;
+pragma solidity ^0.8.0;
 
 library Hasher {
   function poseidon(bytes32[2] memory input) public pure returns (bytes32){}
@@ -21,7 +20,7 @@ contract MerkleTreeWithHistory {
   uint32 public constant ROOT_HISTORY_SIZE = 100;
   bytes32[ROOT_HISTORY_SIZE] public roots;
 
-  constructor(uint32 _treeLevels) public {
+  constructor(uint32 _treeLevels) {
     require(_treeLevels > 0, "_treeLevels should be greater than zero");
     require(_treeLevels < 32, "_treeLevels should be less than 32");
     levels = _treeLevels;
